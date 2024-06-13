@@ -36,9 +36,11 @@ for read in bamfile.fetch():
             print("intron: ",le)
         elif op == 4:
             print("soft clip: ",le)
-            SoH = 0
+            if(SoH == 0):
+                SoH = 1
         elif op == 5:
-            SoH = 1
+            if(SoH == 0):
+                SoH = 2
             print("hard clip: ",le)
 
 #print(seq)
@@ -82,48 +84,52 @@ referenceindex = 0
 
 for read in bamfile.fetch():
 
-    if(SoH==0):
+    if(SoH==1):
         queryindex = read.query_alignment_start
-    else:
+    elif(SoH==2):
         queryindex = 0
+    else:
+        print("No clipping Error")
+        sys.exit(1)
     referenceindex = read.reference_start
 
     for op, le in read.cigartuples:
         if(op == 0):
             for i in range(le):
+                # if(query_positions2)
                 query_positions2.append(queryindex)
                 reference_positions2.append(referenceindex)
                 queryindex+=1
                 referenceindex+=1
         elif(op == 1):
             queryindex+=le
-            query_positions2.append(queryindex)
+            # query_positions2.append(queryindex)
         elif(op == 2):
             referenceindex+=le
-            reference_positions2.append(referenceindex)
+            # reference_positions2.append(referenceindex)
         elif(op == 3):
-            splices.append([queryindex,queryindex+1])
-            for x in range(2):
-                query_positions2.append(queryindex)
-                queryindex+=1
-            reference_positions2.append(referenceindex)
+            splices.append([queryindex-1,queryindex])
+            #query_positions2.append(queryindex)
+            #queryindex+=1
+            # query_positions2.append(queryindex)
+            # reference_positions2.append(referenceindex)
             referenceindex+=le
-            reference_positions2.append(referenceindex)
+            # reference_positions2.append(referenceindex)
 
-
-
-
-
-
-
-
-
-
-
+dict = {}
 print(query_positions2)
 print(reference_positions2)
 print(splices)
+assert len(query_positions2)==len(reference_positions2)
+for i in range(len(query_positions2)):
+    dict[query_positions2[i]] = reference_positions2[i]
 
+
+
+
+
+for x in splices:
+    print("{}:{},{}:{}".format(x[0],dict[x[0]],x[1], dict[x[1]]))
 bamfile.close()
 
 
