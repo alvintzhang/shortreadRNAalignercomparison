@@ -8,6 +8,7 @@ import sys
 bamfile = pysam.AlignmentFile("/Users/AlvinZhang2026/bio_data/several_reads2.bam", "rb")
 
 
+
 #parseCigar method which reads the given bam file
 #returns the sequence, cigar string, and whether the left clip is soft/hard
 def parseCigar(givenBamfile):
@@ -60,10 +61,8 @@ def QRtable1(givenBamfile):
             query_positions.append(query_pos)
             reference_positions.append(ref_pos)
 
-    print(query_positions) #correct but no splice
-    print(reference_positions) #correct but no splice
-
-QRtable1(bamfile)
+    array = [query_positions, reference_positions]
+    return array
 
 # Just like QRtable1 but also returns an array with the splices
 # Therefore able to differentiate between all operations returned by cigartuples
@@ -112,16 +111,20 @@ def findRefSplicePos(qp, rp, s):
     for i in range(len(qp)):
         dict[qp[i]] = rp[i]
 
-
-
-    for x in splices:
-        print("{}:{},{}:{}".format(x[0],dict[x[0]],x[1], dict[x[1]])) #printing out the splices and ref positions
+    #for x in splices:
+        #print("{}:{},{}:{}".format(x[0],dict[x[0]],x[1], dict[x[1]])) #printing out the splices and ref positions
 
     return dict
 
+
+#TESTS
 parseCigarArray = parseCigar(bamfile) #calling parseCigar
 SoftorHard = parseCigarArray[2]
 QRtable2Array = QRtable2(bamfile, SoftorHard)
+
+correctData = QRtable1(bamfile)
+for x in correctData:
+    print(x)
 
 query_positions2 = QRtable2Array[0]
 reference_positions2 = QRtable2Array[1]
@@ -132,6 +135,10 @@ print(reference_positions2)
 print(splices)
 
 findRefSplicePos(query_positions2, reference_positions2, splices)
+dict = findRefSplicePos(query_positions2, reference_positions2, splices)
+
+for x in splices:
+    print("{}:{},{}:{}".format(x[0], dict[x[0]], x[1], dict[x[1]]))  # printing out the splices and ref positions
 
 
 
