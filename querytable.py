@@ -1,5 +1,5 @@
 #Author: Alvin Zhang
-#Last changes: 6/13/24
+#Last changes: 6/14/24
 #Parsing CIGAR string + creating query/reference position table (two arrays) that also keep track of splices
 
 import pysam
@@ -107,39 +107,46 @@ def QRtable2(givenBamfile, SoH):
 
 def findRefSplicePos(qp, rp, s):
     dict = {}
-    assert len(query_positions2)==len(reference_positions2)
+    assert len(qp)==len(rp)
     for i in range(len(qp)):
         dict[qp[i]] = rp[i]
 
-    #for x in splices:
-        #print("{}:{},{}:{}".format(x[0],dict[x[0]],x[1], dict[x[1]])) #printing out the splices and ref positions
+    splicerefpos = []
+    for x in s:
+        splicerefpos.append("{}:{},{}:{}".format(x[0],dict[x[0]],x[1], dict[x[1]])) #printing out the splices and ref positions
 
-    return dict
+    return [dict, splicerefpos]
+
 
 
 #TESTS
-parseCigarArray = parseCigar(bamfile) #calling parseCigar
-SoftorHard = parseCigarArray[2]
-QRtable2Array = QRtable2(bamfile, SoftorHard)
+def testFunctions(givenBamfile):
+    parseCigarArray = parseCigar(givenBamfile) #calling parseCigar
+    SoftorHard = parseCigarArray[2]
+    QRtable2Array = QRtable2(givenBamfile, SoftorHard)
 
-correctData = QRtable1(bamfile)
-for x in correctData:
-    print(x)
+    correctData = QRtable1(givenBamfile)
+    for x in correctData:
+        print(x)
 
-query_positions2 = QRtable2Array[0]
-reference_positions2 = QRtable2Array[1]
-splices = QRtable2Array[2]
+    query_positions2 = QRtable2Array[0]
+    reference_positions2 = QRtable2Array[1]
+    splices = QRtable2Array[2]
 
-print(query_positions2)
-print(reference_positions2)
-print(splices)
+    print(query_positions2)
+    print(reference_positions2)
+    print(splices)
 
-findRefSplicePos(query_positions2, reference_positions2, splices)
-dict = findRefSplicePos(query_positions2, reference_positions2, splices)
+    findRefSplicePos(query_positions2, reference_positions2, splices)
+    arr = findRefSplicePos(query_positions2, reference_positions2, splices)
+    dict = arr[0]
 
-for x in splices:
-    print("{}:{},{}:{}".format(x[0], dict[x[0]], x[1], dict[x[1]]))  # printing out the splices and ref positions
+    for x in splices:
+        print("{}:{},{}:{}".format(x[0], dict[x[0]], x[1], dict[x[1]]))  # printing out the splices and ref positions
 
+
+
+testFunctions(bamfile)
 
 
 bamfile.close()
