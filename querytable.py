@@ -1,6 +1,6 @@
 #Author: Alvin Zhang
 #Last changes: 6/14/24
-#Parsing CIGAR string + creating query/reference position table (two arrays) that also keep track of splices
+#Processes a BAM file to extract and parse CIGAR strings, create position tables, and identify splices.
 
 import pysam
 import sys
@@ -9,13 +9,12 @@ bamfile = pysam.AlignmentFile("/Users/AlvinZhang2026/bio_data/several_reads2.bam
 
 
 
-#parseCigar method which reads the given bam file
-#returns the sequence, cigar string, and whether the left clip is soft/hard
+#parseCigar method which reads the given BAM file
+#returns the sequences, CIGAR strings, and whether the left clip is soft or hard (SoH variable)
 def parseCigar(givenBamfile):
-    seq = ""
-    SoH = 0
-    cigar = ""
-    #just to get a basic read
+    seq = [] #all the reads in the BAM file
+    SoH = [] #soft or hard of left clip for each read
+    cigar = [] #array of strings with CIGAR strings of all the potential reads
 
 
     for read in bamfile.fetch(): #if there is more than one read in the file
@@ -24,8 +23,8 @@ def parseCigar(givenBamfile):
         print("first position on ref: ",read.reference_start)
         print("first position on read: ",read.query_alignment_start)
         print("read sequence: ",read.query_sequence)
-        seq = read.query_sequence
-        cigar = read.cigarstring
+        seq.append(read.query_sequence)
+        cigar.append(read.cigarstring)
 
         print("cigar: ",read.cigarstring)
 
@@ -41,10 +40,10 @@ def parseCigar(givenBamfile):
             elif op == 4:
                 print("soft clip: ",le)
                 if(SoH == 0):
-                    SoH = 1
+                    SoH.append(1)
             elif op == 5:
                 if(SoH == 0):
-                    SoH = 2
+                    SoH.append(2)
                 print("hard clip: ",le)
 
     return [seq, cigar, SoH]
@@ -72,15 +71,15 @@ def QRtable2(givenBamfile, SoH):
 
     splices = [] # holds last match and first match (beginning/end of splice)
     # splices holds positions of the query column/row of the table
-
+    SoHindex = 0
     queryindex = 0
     referenceindex = 0
 
     for read in givenBamfile.fetch():
 
-        if(SoH==1):
+        if(SoH[SoHindex]==1):
             queryindex = read.query_alignment_start
-        elif(SoH==2):
+        elif(SoH[SoHindex]==2):
             queryindex = 0
         else:
             print("No clipping Error")
@@ -122,7 +121,8 @@ def findRefSplicePos(qp, rp, s):
 #TESTS
 def testFunctions(givenBamfile):
     parseCigarArray = parseCigar(givenBamfile) #calling parseCigar
-    SoftorHard = parseCigarArray[2]
+    SoftorHardArray = (parseCigarArray[2])
+    SoftorHard = SoftorHardArray[0]
     QRtable2Array = QRtable2(givenBamfile, SoftorHard)
 
     correctData = QRtable1(givenBamfile)
