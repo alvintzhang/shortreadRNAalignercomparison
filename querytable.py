@@ -18,7 +18,7 @@ def parseCigar(givenBamfile):
     #just to get a basic read
 
 
-    for read in bamfile.fetch():
+    for read in bamfile.fetch(): #if there is more than one read in the file
         print("read name: ",read.query_name)
         print("reference name: ",read.reference_name)
         print("first position on ref: ",read.reference_start)
@@ -111,11 +111,11 @@ def findRefSplicePos(qp, rp, s):
     for i in range(len(qp)):
         dict[qp[i]] = rp[i]
 
-    splicerefpos = []
+    qrDASplicePos = []
     for x in s:
-        splicerefpos.append("{}:{},{}:{}".format(x[0],dict[x[0]],x[1], dict[x[1]])) #printing out the splices and ref positions
+        qrDASplicePos.append("{}:{},{}:{}".format(x[0],dict[x[0]],x[1], dict[x[1]])) #printing out the splices and ref positions
 
-    return [dict, splicerefpos]
+    return [dict, qrDASplicePos]
 
 
 
@@ -140,9 +140,18 @@ def testFunctions(givenBamfile):
     findRefSplicePos(query_positions2, reference_positions2, splices)
     arr = findRefSplicePos(query_positions2, reference_positions2, splices)
     dict = arr[0]
+    a = []
 
     for x in splices:
-        print("{}:{},{}:{}".format(x[0], dict[x[0]], x[1], dict[x[1]]))  # printing out the splices and ref positions
+        b = [x[0], dict[x[0]]]
+        c = [x[1], dict[x[1]]]
+
+        a.append([b,c])
+
+    for x in a:
+        for y in x:
+            print(y)
+        print("")
 
 
 
