@@ -39,10 +39,10 @@ def parseCigar(givenBamfile):
                 print("intron: ",le)
             elif op == 4:
                 print("soft clip: ",le)
-                if(SoH == 0):
+                if not SoH:
                     SoH.append(1)
             elif op == 5:
-                if(SoH == 0):
+                if not SoH:
                     SoH.append(2)
                 print("hard clip: ",le)
 
@@ -77,9 +77,9 @@ def QRtable2(givenBamfile, SoH):
 
     for read in givenBamfile.fetch():
 
-        if(SoH[SoHindex]==1):
+        if SoH==1 :
             queryindex = read.query_alignment_start
-        elif(SoH[SoHindex]==2):
+        elif SoH==2 :
             queryindex = 0
         else:
             print("No clipping Error")
