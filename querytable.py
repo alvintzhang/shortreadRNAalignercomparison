@@ -16,8 +16,9 @@ def parseCigar(givenBamfile):
     SoH = [] #soft or hard of left clip for each read
     cigar = [] #array of strings with CIGAR strings of all the potential reads
 
-
     for read in bamfile.fetch(): #if there is more than one read in the file
+        if(read.is_secondary):
+            continue
         print("read name: ",read.query_name)
         print("reference name: ",read.reference_name)
         print("first position on ref: ",read.reference_start)
@@ -116,6 +117,23 @@ def findRefSplicePos(qp, rp, s):
 
     return [dict, qrDASplicePos]
 
+def extract_subreads(query_seq, query_start):
+    # Extract the subread from the query sequence
+    subread = query_seq[query_start-1:query_start-1+150]  # Adjusting for 0-based indexing in Python
+    return subread
+
+
+
+#def positiontoBase(parseCigarArray, query_positions2):
+ #   qbase = []
+  #  seq = parseCigarArray[0]
+   # for x in query_positions2:
+    #    qbase.append(seq[x])
+
+    #return qbase
+
+def findRandomSubread(table):
+
 
 
 #TESTS
@@ -153,6 +171,8 @@ def testFunctions(givenBamfile):
             print(y)
         print("")
 
+
+   # print(positiontoBase(parseCigarArray, query_positions2))
 
 
 testFunctions(bamfile)
