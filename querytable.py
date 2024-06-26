@@ -101,21 +101,24 @@ def QRtable2(givenBamfile, SoH):
     array = [query_positions2, reference_positions2, splices]
     return array
 
-
+#Because our splices array contains the index of where the splices are based on the query index
+#We want to convert from the query index to the reference positions in order to find the actual bases where the splices are
+#This function also prints out the results
 def findRefSplicePos(qp, rp, s):
     dict = {}
     assert len(qp) == len(rp)
     for i in range(len(qp)):
         dict[qp[i]] = rp[i]
 
+    #printing results
     qrDASplicePos = []
     for x in s:
         qrDASplicePos.append(
             "{}:{},{}:{}".format(x[0], dict[x[0]], x[1], dict[x[1]]))  # printing out the splices and ref positions
-
+    #returns a dict with the both the query positions and the reference positions
     return [dict, qrDASplicePos]
 
-
+#
 def extract_subreads(query_seq, start_positions, length):
     # Extract the subreads from the query sequences
     subreads = []
@@ -124,6 +127,7 @@ def extract_subreads(query_seq, start_positions, length):
             subread = query_seq[start_pos:start_pos + length]  # Extract subread of given length
             subreads.append(subread)
 
+    #returns the list of extracted subreads
     return subreads
 
 
