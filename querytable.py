@@ -120,8 +120,10 @@ def extract_subreads(query_seq, start_positions, length):
     # Extract the subreads from the query sequences
     subreads = []
     for start_pos in start_positions:
-        subread = query_seq[start_pos:start_pos + length]  # Extract subread of given length
-        subreads.append(subread)
+        if (start_pos + length <= len(query_seq)) :
+            subread = query_seq[start_pos:start_pos + length]  # Extract subread of given length
+            subreads.append(subread)
+
     return subreads
 
 
@@ -173,8 +175,8 @@ def testFunctions(givenBamfile):
     short_read_rna = seqs[0]
 
     # Extract subreads (example: first 10 positions)
-    length_of_subread = 150
-    subreads = extract_subreads(seqs[0], query_positions2[:10], length_of_subread)
+    length_of_subread = 150 #150 base pair
+    subreads = extract_subreads(seqs[0], query_positions2, length_of_subread)
 
     # Compare subreads with short-read RNA sequence
     matches = compare_subreads_with_rna(subreads, short_read_rna)
