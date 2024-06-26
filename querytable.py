@@ -118,7 +118,8 @@ def findRefSplicePos(qp, rp, s):
     #returns a dict with the both the query positions and the reference positions
     return [dict, qrDASplicePos]
 
-#
+#Extracts all subreads of the given length from the query sequences
+#Returns a list with the subreads
 def extract_subreads(query_seq, start_positions, length):
     # Extract the subreads from the query sequences
     subreads = []
@@ -138,6 +139,15 @@ def compare_subreads_with_rna(subreads, short_read_rna):
         if subread in short_read_rna:
             matches.append(subread)
     return matches
+
+def subreads_to_fasta(subreads, output_file):
+    with open(output_file, 'w') as fasta_file:
+        for i, subread in enumerate(subreads):
+            # Write the header line with a unique identifier
+            fasta_file.write(f">subread_{i+1}\n")
+            # Write the sequence data
+            fasta_file.write(f"{subread}\n")
+
 
 
 def testFunctions(givenBamfile):
@@ -186,6 +196,9 @@ def testFunctions(givenBamfile):
     matches = compare_subreads_with_rna(subreads, short_read_rna)
     print("Matches with short-read RNA:", matches)
 
+    output_file = "/Users/AlvinZhang2026/bio_data/matching_subreads.fasta"
+    subreads_to_fasta(matches, output_file)
+    print(f"Subreads saved to {output_file}")
 
 testFunctions(bamfile)
 
