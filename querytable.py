@@ -3,6 +3,11 @@ import sys
 
 bamfile = pysam.AlignmentFile("/Users/AlvinZhang2026/bio_data/several_reads2.bam", "rb")
 
+#This code processes and analyzes sequencing data in a BAM file to understand sequencing alignment, interpreting how
+#reads map to the reference genome through long read rna sequencing (Minimap2). It then identifies splice sites and
+#creates a table with the query positions and reference positions to extract 150 base subreads from. Using short read rna
+#sequencing on the subreads, the code then compares the short read data with the original long read data to tests for
+#accuracy and precision
 
 # parseCigar method which reads the given BAM file
 # returns the sequences, CIGAR strings, and whether the left clip is soft or hard (SoH variable)
@@ -148,8 +153,7 @@ def subreads_to_fasta(subreads, output_file):
             # Write the sequence data
             fasta_file.write(f"{subread}\n")
 
-
-
+#This function tests all the functions written above and prints out their results
 def testFunctions(givenBamfile):
     parseCigarArray = parseCigar(givenBamfile)  # calling parseCigar
     seqs = parseCigarArray[0]
@@ -157,6 +161,7 @@ def testFunctions(givenBamfile):
     SoftorHard = SoftorHardArray[0]
     QRtable2Array = QRtable2(givenBamfile, SoftorHard)
 
+    #first dataset
     correctData = QRtable1(givenBamfile)
     for x in correctData:
         print(x)
@@ -165,6 +170,7 @@ def testFunctions(givenBamfile):
     reference_positions2 = QRtable2Array[1]
     splices = QRtable2Array[2]
 
+    #second dataset that also contains the positions of splices within the sequences
     print(query_positions2)
     print(reference_positions2)
     print(splices)
