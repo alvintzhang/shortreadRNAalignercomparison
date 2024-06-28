@@ -9,6 +9,8 @@ bamfile = pysam.AlignmentFile("/Users/AlvinZhang2026/bio_data/several_reads2.bam
 #sequencing on the subreads, the code then compares the short read data with the original long read data to tests for
 #accuracy and precision
 
+#Enhancing accuracy and precision, this code allows for more thorough studying of gene expression and regulation.
+
 # parseCigar method which reads the given BAM file
 # returns the sequences, CIGAR strings, and whether the left clip is soft or hard (SoH variable)
 def parseCigar(givenBamfile):
@@ -136,7 +138,7 @@ def extract_subreads(query_seq, start_positions, length):
     #returns the list of extracted subreads
     return subreads
 
-
+#comparison method
 def compare_subreads_with_rna(subreads, short_read_rna):
     # Compare extracted subreads with short-read RNA sequences
     matches = []
@@ -145,6 +147,7 @@ def compare_subreads_with_rna(subreads, short_read_rna):
             matches.append(subread)
     return matches
 
+#converts subreads to fasta file to run short read (STAR/HISAT2/Minimap2) RNA seq on
 def subreads_to_fasta(subreads, output_file):
     with open(output_file, 'w') as fasta_file:
         for i, subread in enumerate(subreads):
