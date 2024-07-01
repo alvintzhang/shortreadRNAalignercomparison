@@ -194,20 +194,22 @@ def testFunctions(givenBamfile):
             print(y)
         print("")
 
-    # Example short-read RNA sequence for comparison (replace with actual data)
-    short_read_rna = seqs[0]
+    #Minimap2 long read example sequence to run
+    read_rna = seqs[0]
 
-    # Extract subreads (example: first 10 positions)
-    length_of_subread = 150 #150 base pair
+    #Extracts our appropriate subreads
+    length_of_subread = 150 #150 base pairs
     subreads = extract_subreads(seqs[0], query_positions2, length_of_subread)
 
-    # Compare subreads with short-read RNA sequence
-    matches = compare_subreads_with_rna(subreads, short_read_rna)
+    #Make sure that the subreads match back up with the original long read sequence results
+    matches = compare_subreads_with_rna(subreads, read_rna)
     print("Matches with short-read RNA:", matches)
 
-    output_file = "/Users/AlvinZhang2026/bio_data/matching_subreads.fasta"
-    subreads_to_fasta(matches, output_file)
-    print(f"Subreads saved to {output_file}")
+    output_file1 = 'new_subreads.fasta'
+
+    #fasta output converting from subreads in BAM format
+    output_file2 = "/Users/AlvinZhang2026/bio_data/matching_subreads.fasta"
+    subreads_to_fasta(matches, output_file2)
 
 testFunctions(bamfile)
 
