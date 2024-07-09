@@ -109,7 +109,7 @@ def QRtable2(givenBamfile, SoH):
                 referenceindex += le
             elif op == 3:  # splice
                 splices.append([queryindex - 1, queryindex])
-                splices2.append([[queryindex - 1, referenceindex],[queryindex, referenceindex+le]])
+                splices2.append([[queryindex - 1, referenceindex], [queryindex, referenceindex + le]])
                 query_positions2.append(queryindex)
                 reference_positions2.append(reference_positions2)
                 referenceindex += le
