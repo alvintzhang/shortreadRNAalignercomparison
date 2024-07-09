@@ -55,6 +55,9 @@ def parseCigar(givenBamfile):
 
 # Creates two arrays that hold the query position and reference positions of the read
 # Cannot differentiate between deletions and splices
+
+# Creates two arrays that hold the query position and reference positions of the read
+# Cannot differentiate between deletions and splices
 def QRtable1(givenBamfile):
     query_positions = []
     reference_positions = []
