@@ -138,12 +138,17 @@ def findRefSplicePos(qp, rp, s):
 # Extracts all subreads of the given length from the query sequences
 # Returns a list with the subreads
 def extract_subreads(query_seq, start_positions, length):
-    # Extract the subreads from the query sequences
+    # Extract non-overlapping subreads from the query sequences
     subreads = []
+    used_positions = set()
+
     for start_pos in start_positions:
-        if (start_pos + length <= len(query_seq)):
+        # Check if the subread can be extracted without overlap
+        if start_pos not in used_positions and (start_pos + length <= len(query_seq)):
             subread = query_seq[start_pos:start_pos + length]  # Extract subread of given length
             subreads.append(subread)
+            # Mark positions as used
+            used_positions.update(range(start_pos, start_pos + length))
 
     # returns the list of extracted subreads
     return subreads
@@ -201,7 +206,7 @@ def testFunctions(givenBamfile):
 
     # Make sure that the subreads match back up with the original long read sequence results
     matches = compare_subreads(subreads, read_rna)
-    print("Matches with short-read RNA:", matches)
+    print("Subreads:", matches)
 
     output_file1 = 'new_subreads.fasta'
 
