@@ -3,12 +3,13 @@ import sys
 
 bamfile = pysam.AlignmentFile("/Users/AlvinZhang2026/bio_data/several_reads2.bam", "rb")
 
-
-# This code processes and analyzes sequencing data in a BAM file to understand sequencing alignment, interpreting how
-# reads map to the reference genome through long read rna sequencing (Minimap2). It then identifies splice sites and
-# creates a table with the query positions and reference positions to extract 150 base subreads from. Using short read rna
-# sequencing on the subreads, the code then compares the short read data with the original long read data to tests for
-# accuracy and precision
+'''
+This code processes and analyzes sequencing data in a BAM file to understand sequencing alignment, interpreting how
+reads map to the reference genome through long read rna sequencing (Minimap2). It then identifies splice sites and
+creates a table with the query positions and reference positions to extract 150 base subreads from. Using short read rna
+sequencing on the subreads, the code then compares the short read data with the original long read data to tests for
+accuracy and precision
+'''
 
 # Enhancing accuracy and precision, this code allows for more thorough studying of gene expression and regulation.
 
@@ -55,9 +56,6 @@ def parseCigar(givenBamfile):
 
 # Creates two arrays that hold the query position and reference positions of the read
 # Cannot differentiate between deletions and splices
-
-# Creates two arrays that hold the query position and reference positions of the read
-# Cannot differentiate between deletions and splices
 def QRtable1(givenBamfile):
     query_positions = []
     reference_positions = []
@@ -70,9 +68,10 @@ def QRtable1(givenBamfile):
     array = [query_positions, reference_positions]
     return array
 
-
-# Just like QRtable1 but also returns an array with the splices
-# Therefore able to differentiate between all operations returned by cigartuples
+'''
+Just like QRtable1 but also returns an array with the splices
+Therefore able to differentiate between all operations returned by cigartuples
+'''
 def QRtable2(givenBamfile, SoH):
     query_positions2 = []
     reference_positions2 = []
@@ -109,7 +108,7 @@ def QRtable2(givenBamfile, SoH):
                 referenceindex += le
             elif op == 3:  # splice
                 splices.append([queryindex - 1, queryindex])
-                splices2.append([[queryindex - 1, referenceindex], [queryindex, referenceindex + le]])
+                splices2.append([[queryindex - 1, referenceindex],[queryindex, referenceindex+le]])
                 query_positions2.append(queryindex)
                 reference_positions2.append(reference_positions2)
                 referenceindex += le
@@ -214,4 +213,3 @@ def testFunctions(givenBamfile):
 testFunctions(bamfile)
 
 bamfile.close()
-
