@@ -1,5 +1,6 @@
 import pysam
 import sys
+import random
 
 bamfile = pysam.AlignmentFile("/Users/AlvinZhang2026/bio_data/several_reads2.bam", "rb")
 
@@ -116,10 +117,11 @@ def QRtable2(givenBamfile, SoH):
     array = [query_positions2, reference_positions2, splices, splices2]
     return array
 
-
-# Because our splices array contains the index of where the splices are based on the query index
-# We want to convert from the query index to the reference positions in order to find the actual bases where the splices are
-# This function also prints out the results
+'''
+Because our splices array contains the index of where the splices are based on the query index
+We want to convert from the query index to the reference positions in order to find the actual bases where the splices are
+This function also prints out the results
+'''
 def findRefSplicePos(qp, rp, s):
     dict = {}
     assert len(qp) == len(rp)
@@ -151,6 +153,18 @@ def extract_subreads(query_seq, start_positions, length):
             used_positions.update(range(start_pos, start_pos + length))
 
     # returns the list of extracted subreads
+    return subreads
+
+
+def extract_random_subreads(query_seq, length):
+    subreads = []
+    num_elements = len(query_seq) // length
+
+    for _ in range(num_elements):
+        start_pos = random.randint(0, len(query_seq) - length)
+        subread = query_seq[start_pos:start_pos + length]
+        subreads.append(subread)
+
     return subreads
 
 
@@ -214,6 +228,12 @@ def testFunctions(givenBamfile):
     output_file2 = "/Users/AlvinZhang2026/bio_data/new_subreads.fasta"
     subreads_to_fasta(matches, output_file2)
 
+    #extracts a random x amount of subreads of length_of_subread
+    #where x = len(seqs[0]) // length_of_subread
+    subreads2 = extract_random_subreads(seqs[0], length_of_subread)
+    print("Random Subreads:")
+    for i, subreads2 in enumerate(subreads2):
+        print(f"Subread {i + 1}: {subreads2}")
 
 testFunctions(bamfile)
 
