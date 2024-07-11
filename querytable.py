@@ -163,7 +163,8 @@ def extract_random_subreads(query_seq, length):
     for _ in range(num_elements):
         start_pos = random.randint(0, len(query_seq) - length)
         subread = query_seq[start_pos:start_pos + length]
-        subreads.append(subread)
+        end_pos = start_pos + length - 1
+        subreads.append((subread, start_pos, end_pos))
 
     return subreads
 
@@ -232,8 +233,17 @@ def testFunctions(givenBamfile):
     #where x = len(seqs[0]) // length_of_subread
     subreads2 = extract_random_subreads(seqs[0], length_of_subread)
     print("Random Subreads:")
-    for i, subreads2 in enumerate(subreads2):
-        print(f"Subread {i + 1}: {subreads2}")
+    for i, (subread, start_pos, end_pos) in enumerate(subreads2):
+        print(f"Subread {i + 1}: {subread} (Start: {start_pos}, End: {end_pos})")
+
+    output_file3 = "/Users/AlvinZhang2026/bio_data/random_subreads.fasta"
+
+    subreadseqs = subreads2[0]
+    # Convert random subreads to fasta format
+    subreads_to_fasta(subreadseqs, output_file3)
+
+    # Make sure that the random subreads match back up with the original long read sequence results
+    #matches2 = compare_subreads(subreadseqs, read_rna)
 
 testFunctions(bamfile)
 
