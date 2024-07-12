@@ -156,7 +156,7 @@ def extract_subreads(query_seq, start_positions, length):
     return subreads
 
 
-def extract_random_subreads(query_seq, length):
+def extract_random_subreads(query_seq, reference_positions, length):
     subreads = []
     num_elements = len(query_seq) // length
 
@@ -164,7 +164,9 @@ def extract_random_subreads(query_seq, length):
         start_pos = random.randint(0, len(query_seq) - length)
         subread = query_seq[start_pos:start_pos + length]
         end_pos = start_pos + length - 1
-        subreads.append((subread, start_pos, end_pos))
+        start_ref_pos = reference_positions[start_pos]
+        end_ref_pos = reference_positions[end_pos]
+        subreads.append((subread, start_pos, end_pos, start_ref_pos, end_ref_pos))
 
     return subreads
 
@@ -231,19 +233,25 @@ def testFunctions(givenBamfile):
 
     #extracts a random x amount of subreads of length_of_subread
     #where x = len(seqs[0]) // length_of_subread
-    subreads2 = extract_random_subreads(seqs[0], length_of_subread)
+
+    subreads2 = extract_random_subreads(seqs[0], reference_positions2, length_of_subread)
     print("Random Subreads:")
-    for i, (subread, start_pos, end_pos) in enumerate(subreads2):
-        print(f"Subread {i + 1}: {subread} (Start: {start_pos}, End: {end_pos})")
+    for i, (subread, start_pos, end_pos, start_ref_pos, end_ref_pos) in enumerate(subreads2):
+        print(f"Subread {i + 1}: {subread} (Start: {start_pos}, End: {end_pos}, Start Ref: {start_ref_pos}, End Ref: {end_ref_pos})")
 
     output_file3 = "/Users/AlvinZhang2026/bio_data/random_subreads.fasta"
 
-    subreadseqs = subreads2[0]
+    #subreadseqs = subreads2[0]
     # Convert random subreads to fasta format
-    subreads_to_fasta(subreadseqs, output_file3)
+    #subreads_to_fasta(subreadseqs, output_file3)
 
     # Make sure that the random subreads match back up with the original long read sequence results
     #matches2 = compare_subreads(subreadseqs, read_rna)
+
+    for x in subreads2:
+        for y in x:
+            z = str(y[0])
+            print(z)
 
 testFunctions(bamfile)
 
