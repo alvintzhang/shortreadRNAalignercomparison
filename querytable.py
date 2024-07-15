@@ -4,8 +4,18 @@ import random
 
 bamfile = pysam.AlignmentFile("/Users/AlvinZhang2026/bio_data/several_reads2.bam", "rb")
 
+'''
+This code processes and analyzes sequencing data in a BAM file to understand sequencing alignment, interpreting how
+reads map to the reference genome through long read rna sequencing (Minimap2). It then identifies splice sites and
+creates a table with the query positions and reference positions to extract 150 base subreads from. Using short read rna
+sequencing on the subreads, the code then compares the short read data with the original long read data to tests for
+accuracy and precision
+'''
+
 # Enhancing accuracy and precision, this code allows for more thorough studying of gene expression and regulation.
 
+# parseCigar method which reads the given BAM file
+# returns the sequences, CIGAR strings, and whether the left clip is soft or hard (SoH variable)
 def parseCigar(givenBamfile):
     seq = []  # all the reads in the BAM file
     SoH = []  # soft or hard of left clip for each read
@@ -44,6 +54,9 @@ def parseCigar(givenBamfile):
 
     return [seq, cigar, SoH]
 
+
+# Creates two arrays that hold the query position and reference positions of the read
+# Cannot differentiate between deletions and splices
 def QRtable1(givenBamfile):
     query_positions = []
     reference_positions = []
@@ -56,11 +69,17 @@ def QRtable1(givenBamfile):
     array = [query_positions, reference_positions]
     return array
 
+'''
+Just like QRtable1 but also returns an array with the splices
+Therefore able to differentiate between all operations returned by cigartuples
+'''
 def QRtable2(givenBamfile, SoH):
     query_positions2 = []
     reference_positions2 = []
 
     splices = []  # holds last match and first match (beginning/end of splice)
+    # splices holds positions of the query column/row of the table
+
     splices2 = []
     SoHindex = 0
     queryindex = 0
@@ -92,63 +111,88 @@ def QRtable2(givenBamfile, SoH):
                 splices.append([queryindex - 1, queryindex])
                 splices2.append([[queryindex - 1, referenceindex],[queryindex, referenceindex+le]])
                 query_positions2.append(queryindex)
-                reference_positions2.append(referenceindex)
+                reference_positions2.append(reference_positions2)
                 referenceindex += le
 
     array = [query_positions2, reference_positions2, splices, splices2]
     return array
 
+'''
+Because our splices array contains the index of where the splices are based on the query index
+We want to convert from the query index to the reference positions in order to find the actual bases where the splices are
+This function also prints out the results
+'''
 def findRefSplicePos(qp, rp, s):
     dict = {}
     assert len(qp) == len(rp)
     for i in range(len(qp)):
         dict[qp[i]] = rp[i]
 
+    # printing results
     qrDASplicePos = []
     for x in s:
         qrDASplicePos.append(
-            "{}:{},{}:{}".format(x[0], dict[x[0]], x[1], dict[x[1]]))
+            "{}:{},{}:{}".format(x[0], dict[x[0]], x[1], dict[x[1]]))  # printing out the splices and ref positions
+    # returns a dict with the both the query positions and the reference positions
     return [dict, qrDASplicePos]
 
+
+# Extracts all subreads of the given length from the query sequences
+# Returns a list with the subreads
 def extract_subreads(query_seq, start_positions, length):
+    # Extract non-overlapping subreads from the query sequences
     subreads = []
     used_positions = set()
 
     for start_pos in start_positions:
+        # Check if the subread can be extracted without overlap
         if start_pos not in used_positions and (start_pos + length <= len(query_seq)):
-            subread = query_seq[start_pos:start_pos + length]
+            subread = query_seq[start_pos:start_pos + length]  # Extract subread of given length
             subreads.append(subread)
+            # Mark positions as used
             used_positions.update(range(start_pos, start_pos + length))
 
+    # returns the list of extracted subreads
     return subreads
 
-def extract_random_subreads(query_seq, query_positions, ref_positions, length):
+
+def extract_random_subreads(query_seq, length, query_positions, reference_positions):
     subreads = []
     num_elements = len(query_seq) // length
 
     for _ in range(num_elements):
-        start_pos = random.randint(0, len(query_seq) - length)
-        subread = query_seq[start_pos:start_pos + length]
+        start_pos = random.choice(query_positions)
         end_pos = start_pos + length - 1
-        ref_start = ref_positions[start_pos]
-        ref_end = ref_positions[end_pos]
-        subreads.append((subread, start_pos, end_pos, ref_start, ref_end))
+
+        if end_pos < len(query_seq):
+            subread = query_seq[start_pos:end_pos + 1]
+            ref_start_pos = reference_positions[start_pos]
+            ref_end_pos = reference_positions[end_pos]
+            subreads.append((subread, start_pos, end_pos, query_seq[start_pos], ref_start_pos, ref_end_pos))
 
     return subreads
 
+
+# comparison method
 def compare_subreads(subreads, short_read_rna):
+    # Compare extracted subreads with short-read RNA sequences
     matches = []
     for subread in subreads:
         if subread in short_read_rna:
             matches.append(subread)
     return matches
 
+
+# converts subreads to fasta file to run short read (STAR/HISAT2/Minimap2) RNA seq on
 def subreads_to_fasta(subreads, output_file):
     with open(output_file, 'w') as fasta_file:
         for i, subread in enumerate(subreads):
+            # Write the header line with a unique identifier
             fasta_file.write(f">subread_{i + 1}\n")
+            # Write the sequence data
             fasta_file.write(f"{subread}\n")
 
+# This function tests all the functions written above and prints out their results
 def testFunctions(givenBamfile):
     parseCigarArray = parseCigar(givenBamfile)  # calling parseCigar
     seqs = parseCigarArray[0]
@@ -156,6 +200,7 @@ def testFunctions(givenBamfile):
     SoftorHard = SoftorHardArray[0]
     QRtable2Array = QRtable2(givenBamfile, SoftorHard)
 
+    # first dataset
     correctData = QRtable1(givenBamfile)
     for x in correctData:
         print(x)
@@ -164,35 +209,43 @@ def testFunctions(givenBamfile):
     reference_positions2 = QRtable2Array[1]
     splices = QRtable2Array[2]
 
+    # second dataset that also contains the positions of splices within the sequences
+
     print(QRtable2Array[3])
 
-    print(query_positions2)
-    print(reference_positions2)
+    #print(query_positions2)
+    #print(reference_positions2)
 
+    # Minimap2 long read example sequence to run
     read_rna = seqs[0]
 
+    # Extracts our appropriate subreads
     length_of_subread = 150  # 150 base pairs
     subreads = extract_subreads(seqs[0], query_positions2, length_of_subread)
 
+    # Make sure that the subreads match back up with the original long read sequence results
     matches = compare_subreads(subreads, read_rna)
     print("Subreads:", matches)
 
     output_file1 = 'new_subreads.fasta'
 
+    # fasta output converting from subreads in BAM format
     output_file2 = "/Users/AlvinZhang2026/bio_data/new_subreads.fasta"
     subreads_to_fasta(matches, output_file2)
 
-    subreads2 = extract_random_subreads(seqs[0], query_positions2, reference_positions2, length_of_subread)
+    # Extract random subreads based on query positions
+    subreads2 = extract_random_subreads(seqs[0], length_of_subread, query_positions2, reference_positions2)
     print("Random Subreads:")
-    for i, (subread, start_pos, end_pos, ref_start, ref_end) in enumerate(subreads2):
-        print(f"Subread {i + 1}: {subread} (Query Start: {start_pos}, Query End: {end_pos}, Ref Start: {ref_start}, Ref End: {ref_end})")
+    for i, (subread, start_pos, end_pos, base_start, ref_start, ref_end) in enumerate(subreads2):
+        print(f"Subread {i + 1}: {subread} (Query Start: {start_pos}, Query End: {end_pos}, Ref Start: {ref_start}, Ref End: {ref_end}, Base Start: {base_start})")
 
     output_file3 = "/Users/AlvinZhang2026/bio_data/random_subreads.fasta"
 
-    subreadseqs = [subread[0] for subread in subreads2]
-    subreads_to_fasta(subreadseqs, output_file3)
+    # Convert random subreads to fasta format
+    subreads_to_fasta([subread for subread, _, _, _, _, _ in subreads2], output_file3)
 
-    matches2 = compare_subreads(subreadseqs, read_rna)
+    # Make sure that the random subreads match back up with the original long read sequence results
+    # matches2 = compare_subreads(subreadseqs, read_rna)
 
 testFunctions(bamfile)
 
