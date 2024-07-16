@@ -111,7 +111,7 @@ def QRtable2(givenBamfile, SoH):
                 splices.append([queryindex - 1, queryindex])
                 splices2.append([[queryindex - 1, referenceindex],[queryindex, referenceindex+le]])
                 query_positions2.append(queryindex)
-                reference_positions2.append(reference_positions2)
+                reference_positions2.append(referenceindex)
                 referenceindex += le
 
     array = [query_positions2, reference_positions2, splices, splices2]
@@ -155,7 +155,7 @@ def extract_subreads(query_seq, start_positions, length):
     # returns the list of extracted subreads
     return subreads
 
-#Extracts subreads randomly (number of subreads extracted epends on the length of the sequence)
+# Extracts subreads randomly (number of subreads extracted epends on the length of the sequence)
 def extract_random_subreads(query_seq, length, query_positions, reference_positions):
     subreads = []
     num_elements = len(query_positions) // length
@@ -167,9 +167,15 @@ def extract_random_subreads(query_seq, length, query_positions, reference_positi
 
         if end_pos < len(query_seq):
             subread = query_seq[start_pos:end_pos + 1]
-            ref_start_pos = reference_positions[start_pos_index]
-            ref_end_pos = reference_positions[start_pos_index + length - 1]
+            ref_start_pos = reference_positions[start_pos_index] + 1
+            ref_end_pos = reference_positions[start_pos_index + length - 1] + 1
             subreads.append((subread, start_pos, end_pos, query_seq[start_pos], ref_start_pos, ref_end_pos))
+
+            # Debugging outputs to help identify the position issue
+            print(f"Extracted Subread {len(subreads)}: {subread}")
+            print(f"Query Start: {start_pos}, Query End: {end_pos}")
+            print(f"Reference Start: {ref_start_pos}, Reference End: {ref_end_pos}")
+            print("------")
 
     return subreads
 
@@ -214,40 +220,32 @@ def testFunctions(givenBamfile):
 
     print(QRtable2Array[3])
 
-    #print(query_positions2)
-    #print(reference_positions2)
-
     # Minimap2 long read example sequence to run
     read_rna = seqs[0]
 
     # Extracts our appropriate subreads
-    length_of_subread = 150  # 150 base pairs
+    length_of_subread = 150
     subreads = extract_subreads(seqs[0], query_positions2, length_of_subread)
 
-    # Make sure that the subreads match back up with the original long read sequence results
     matches = compare_subreads(subreads, read_rna)
     print("Subreads:", matches)
 
+    # Outputs the subreads in a FASTA file format for short read analysis
     output_file1 = 'new_subreads.fasta'
-
-    # fasta output converting from subreads in BAM format
     output_file2 = "/Users/AlvinZhang2026/bio_data/new_subreads.fasta"
     subreads_to_fasta(matches, output_file2)
 
-    # Extract random subreads based on query positions
+    # Random extraction and comparison of subreads
     subreads2 = extract_random_subreads(seqs[0], length_of_subread, query_positions2, reference_positions2)
     print("Random Subreads:")
     for i, (subread, start_pos, end_pos, base_start, ref_start, ref_end) in enumerate(subreads2):
         print(f"Subread {i + 1}: {subread} (Query Start: {start_pos}, Query End: {end_pos}, Ref Start: {ref_start}, Ref End: {ref_end}, Base Start: {base_start})")
 
     output_file3 = "/Users/AlvinZhang2026/bio_data/random_subreads.fasta"
-
-    # Convert random subreads to fasta format
     subreads_to_fasta([subread for subread, _, _, _, _, _ in subreads2], output_file3)
 
-    # Make sure that the random subreads match back up with the original long read sequence results
-    # matches2 = compare_subreads(subreadseqs, read_rna)
 
+# run testFunctions
 testFunctions(bamfile)
 
 bamfile.close()
