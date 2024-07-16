@@ -155,19 +155,20 @@ def extract_subreads(query_seq, start_positions, length):
     # returns the list of extracted subreads
     return subreads
 
-
+#Extracts subreads randomly (number of subreads extracted epends on the length of the sequence)
 def extract_random_subreads(query_seq, length, query_positions, reference_positions):
     subreads = []
-    num_elements = len(query_seq) // length
+    num_elements = len(query_positions) // length
 
     for _ in range(num_elements):
-        start_pos = random.choice(query_positions)
+        start_pos_index = random.randint(0, len(query_positions) - 1)
+        start_pos = query_positions[start_pos_index]
         end_pos = start_pos + length - 1
 
         if end_pos < len(query_seq):
             subread = query_seq[start_pos:end_pos + 1]
-            ref_start_pos = reference_positions[start_pos]
-            ref_end_pos = reference_positions[end_pos]
+            ref_start_pos = reference_positions[start_pos_index]
+            ref_end_pos = reference_positions[start_pos_index + length - 1]
             subreads.append((subread, start_pos, end_pos, query_seq[start_pos], ref_start_pos, ref_end_pos))
 
     return subreads
