@@ -155,7 +155,7 @@ def extract_subreads(query_seq, start_positions, length):
     # returns the list of extracted subreads
     return subreads
 
-# Extracts subreads randomly (number of subreads extracted epends on the length of the sequence)
+# Extracts subreads randomly (number of subreads extracted depends on the length of the sequence)
 def extract_random_subreads(query_seq, length, query_positions, reference_positions):
     subreads = []
     num_elements = len(query_positions) // length
@@ -167,18 +167,19 @@ def extract_random_subreads(query_seq, length, query_positions, reference_positi
 
         if end_pos < len(query_seq):
             subread = query_seq[start_pos:end_pos + 1]
-            ref_start_pos = reference_positions[start_pos_index] + 1
-            ref_end_pos = reference_positions[start_pos_index + length - 1] + 1
-            subreads.append((subread, start_pos, end_pos, query_seq[start_pos], ref_start_pos, ref_end_pos))
+            query_alignment_start = start_pos
+            query_alignment_end = end_pos + 1
+            reference_start = reference_positions[start_pos_index]
+            reference_end = reference_positions[start_pos_index + length - 1] + 1
+            subreads.append((subread, query_alignment_start, query_alignment_end, start_pos, reference_start, reference_end))
 
             # Debugging outputs to help identify the position issue
             print(f"Extracted Subread {len(subreads)}: {subread}")
-            print(f"Query Start: {start_pos}, Query End: {end_pos}")
-            print(f"Reference Start: {ref_start_pos}, Reference End: {ref_end_pos}")
+            print(f"Query Start: {query_alignment_start}, Query End: {query_alignment_end}")
+            print(f"Reference Start: {reference_start}, Reference End: {reference_end}")
             print("------")
 
     return subreads
-
 
 # comparison method
 def compare_subreads(subreads, short_read_rna):
@@ -199,12 +200,29 @@ def subreads_to_fasta(subreads, output_file):
             # Write the sequence data
             fasta_file.write(f"{subread}\n")
 
+
+def compare_cigar_strings(long_read_cigar, subread_cigars):
+    match_count = 0
+    total_subreads = len(subread_cigars)
+
+    for subread_cigar in subread_cigars:
+        if subread_cigar == long_read_cigar:
+            match_count += 1
+
+    precision = match_count / total_subreads
+    accuracy = match_count / 1  # Assuming 1 long read
+
+    return precision, accuracy
+
+
 # This function tests all the functions written above and prints out their results
 def testFunctions(givenBamfile):
     parseCigarArray = parseCigar(givenBamfile)  # calling parseCigar
-    seqs = parseCigarArray[0]
-    SoftorHardArray = parseCigarArray[2]
-    SoftorHard = SoftorHardArray[0]
+    seqs = parseCigarArray[0]  # getting the sequences of all the reads
+    cigrs = parseCigarArray[1]  # getting the CIGAR strings of all the reads
+    SoftorHard = parseCigarArray[2][0]  # whether the left clip is soft or hard
+
+    # Use BAM filename directly in function call
     QRtable2Array = QRtable2(givenBamfile, SoftorHard)
 
     # first dataset
@@ -217,7 +235,6 @@ def testFunctions(givenBamfile):
     splices = QRtable2Array[2]
 
     # second dataset that also contains the positions of splices within the sequences
-
     print(QRtable2Array[3])
 
     # Minimap2 long read example sequence to run
@@ -239,10 +256,28 @@ def testFunctions(givenBamfile):
     subreads2 = extract_random_subreads(seqs[0], length_of_subread, query_positions2, reference_positions2)
     print("Random Subreads:")
     for i, (subread, start_pos, end_pos, base_start, ref_start, ref_end) in enumerate(subreads2):
-        print(f"Subread {i + 1}: {subread} (Query Start: {start_pos}, Query End: {end_pos}, Ref Start: {ref_start}, Ref End: {ref_end}, Base Start: {base_start})")
+        print(
+            f"Subread {i + 1}: {subread} (Query Start: {start_pos}, Query End: {end_pos}, Ref Start: {ref_start}, Ref End: {ref_end}, Base Start: {base_start})")
 
     output_file3 = "/Users/AlvinZhang2026/bio_data/random_subreads.fasta"
     subreads_to_fasta([subread for subread, _, _, _, _, _ in subreads2], output_file3)
+
+    # Create a mock AlignedSegment object for the long read
+    long_read_mock = pysam.AlignedSegment()
+    long_read_mock.cigarstring = cigrs[0]  # Assuming the first CIGAR string corresponds to the long read
+
+    # Create mock AlignedSegment objects for the subreads
+    subread_mocks = []
+    for subread in subreads:
+        mock = pysam.AlignedSegment()
+        mock.query_sequence = subread
+        mock.cigarstring = cigrs[0]  # Use the same CIGAR string for simplicity
+        subread_mocks.append(mock)
+
+    precision, accuracy = compare_cigar_strings(long_read_mock.cigarstring, [mock.cigarstring for mock in subread_mocks])
+
+    print(f"Precision: {precision}")
+    print(f"Accuracy: {accuracy}")
 
 
 # run testFunctions
