@@ -1,0 +1,132 @@
+import pysam
+import re
+
+def cigar_to_psl(cigar_string, q_start, q_end, r_start, r_end):
+    # Convert CIGAR string to PSL format
+    matches = re.findall(r'(\d+)([MIDNSHP=X])', cigar_string)
+    match_count = sum(int(count) for count, op in matches if op in 'M=X')
+    mismatch_count = sum(int(count) for count, op in matches if op in 'IDN')
+    block_sizes = [int(count) for count, op in matches if op in 'M=X']
+    q_starts = []
+    t_starts = []
+    q_pos = q_start
+    t_pos = r_start
+    for count, op in matches:
+        count = int(count)
+        if op in 'M=X':
+            q_starts.append(str(q_pos))
+            t_starts.append(str(t_pos))
+            q_pos += count
+            t_pos += count
+        elif op == 'I':
+            q_pos += count
+        elif op == 'D':
+            t_pos += count
+    block_count = len(block_sizes)
+    return (f"{match_count}\t{mismatch_count}\t0\t0\t0\t0\t0\t0\t+\t"
+            f"{q_end - q_start}\t{q_start}\t{q_end}\t"
+            f"{r_end - r_start}\t{r_start}\t{r_end}\t"
+            f"{block_count}\t{','.join(map(str, block_sizes))}\t"
+            f"{','.join(q_starts)}\t{','.join(t_starts)}")
+
+def compare_cigars(short_cigar, long_cigar, short_start, long_start):
+    # Convert CIGAR strings to lists of operations
+    short_ops = re.findall(r'(\d+)([MIDNSHP=X])', short_cigar)
+    long_ops = re.findall(r'(\d+)([MIDNSHP=X])', long_cigar)
+    
+    short_pos = short_start
+    long_pos = long_start
+    matches = 0
+    total = 0
+
+    # Iterate through both CIGAR strings
+    while short_ops and long_ops:
+        short_count, short_op = short_ops.pop(0)
+        long_count, long_op = long_ops.pop(0)
+        short_count, long_count = int(short_count), int(long_count)
+
+        # Compare operations
+        while short_count > 0 and long_count > 0:
+            if short_op == long_op and short_pos == long_pos:
+                matches += 1
+            total += 1
+            
+            short_count -= 1
+            long_count -= 1
+            if short_op in 'M=X':
+                short_pos += 1
+            if long_op in 'M=X':
+                long_pos += 1
+
+        # Add remaining operations back if needed
+        if short_count > 0:
+            short_ops.insert(0, (str(short_count), short_op))
+        if long_count > 0:
+            long_ops.insert(0, (str(long_count), long_op))
+
+    return matches / total if total > 0 else 0
+
+# Open input files
+short_read_bam = pysam.AlignmentFile("short_read_subreads.bam", "rb")
+long_read_bam = pysam.AlignmentFile("long_read_results.bam", "rb")
+
+# Open output files
+short_read_psl = open("short_read_output.psl", "w")
+long_read_psl = open("long_read_output.psl", "w")
+accuracy_file = open("accuracy_comparison.txt", "w")
+
+# Write PSL headers
+psl_header = ("match\tmismatch\trepMatches\tnCount\tqNumInsert\tqBaseInsert\ttNumInsert\ttBaseInsert\t"
+              "strand\tqName\tqSize\tqStart\tqEnd\ttName\ttSize\ttStart\ttEnd\tblockCount\tblockSizes\t"
+              "qStarts\ttStarts\n")
+short_read_psl.write(psl_header)
+long_read_psl.write(psl_header)
+
+# Write accuracy file header
+accuracy_file.write("qName\tqStart\tqEnd\ttName\ttStart\ttEnd\tAccuracy\n")
+
+# Process short reads and convert to PSL
+short_read_dict = {}
+for read in short_read_bam:
+    psl_line = cigar_to_psl(read.cigarstring, read.query_alignment_start, read.query_alignment_end,
+                            read.reference_start, read.reference_end)
+    short_read_psl.write(f"{read.query_name}\t{psl_line}\n")
+    short_read_dict[read.query_name] = {
+        'cigar': read.cigarstring,
+        'start': read.reference_start,
+        'end': read.reference_end,
+        'ref_name': read.reference_name
+    }
+
+# Process long reads, convert to PSL, and compare with short reads
+for long_read in long_read_bam:
+    long_psl_line = cigar_to_psl(long_read.cigarstring, long_read.query_alignment_start,
+                                 long_read.query_alignment_end, long_read.reference_start,
+                                 long_read.reference_end)
+    long_read_psl.write(f"{long_read.query_name}\t{long_psl_line}\n")
+    
+    # Find corresponding short read
+    if long_read.query_name in short_read_dict:
+        short_read = short_read_dict[long_read.query_name]
+        
+        # Compare CIGAR strings
+        accuracy = compare_cigars(
+            short_read['cigar'],
+            long_read.cigarstring,
+            short_read['start'],
+            long_read.reference_start
+        )
+        
+        # Write accuracy result
+        accuracy_file.write(f"{long_read.query_name}\t{short_read['start']}\t{short_read['end']}\t"
+                            f"{short_read['ref_name']}\t{long_read.reference_start}\t{long_read.reference_end}\t"
+                            f"{accuracy:.4f}\n")
+
+# Close files
+short_read_bam.close()
+long_read_bam.close()
+short_read_psl.close()
+long_read_psl.close()
+accuracy_file.close()
+
+print("PSL files and accuracy comparison have been generated.")
