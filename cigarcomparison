@@ -15,8 +15,10 @@ def read_and_process_reads(long_read_bam, subread_bam):
         if read.cigarstring:
             base_seq_id = read.query_name.split()[0]
             long_read_cigar_dict[base_seq_id] = read.cigarstring
+            print(f"Long Read - Seq ID: {base_seq_id}, CIGAR: {read.cigarstring}")
         else:
             print(f"Warning: Read {read.query_name} has no CIGAR string")
+
     print(f"Long reads dictionary: {len(long_read_cigar_dict)} entries")
 
     print("Processing subreads...")
@@ -31,6 +33,7 @@ def read_and_process_reads(long_read_bam, subread_bam):
             print(f"Subread - Seq ID: {base_seq_id}, CIGAR: {cigar}, Start: {start}, End: {end}")
         else:
             print(f"Warning: Subread {base_seq_id} has no CIGAR string")
+
     print(f"Subread list: {len(subread_cigar_list)} entries")
 
     return long_read_cigar_dict, subread_cigar_list
@@ -240,7 +243,7 @@ def compare_cigar_strings(long_read_cigar_dict, subread_cigar_list):
     ]
 
     table = tabulate(results, headers, tablefmt="grid")
-    with open("cigar_comparison_results.txt", "w") as file:
+    with open("star_output_STARtmp/cigar_comparison_results.txt", "w") as file:
         file.write(table)
 
     print("\nCIGAR string comparison results:\n")
