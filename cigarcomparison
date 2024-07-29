@@ -1,6 +1,7 @@
 import pysam
-from tabulate import tabulate
+import csv
 import re
+from tabulate import tabulate
 
 def read_and_process_reads(long_read_bam, subread_bam):
     long_read_cigar_dict = {}
@@ -13,7 +14,7 @@ def read_and_process_reads(long_read_bam, subread_bam):
     print("Processing long reads...")
     for read in long_read_file.fetch():
         if read.cigarstring:
-            base_seq_id = read.query_name.split()[0]
+            base_seq_id = read.query_name.split()[0].split('/')[0]  # Extract ID before '/'
             long_read_cigar_dict[base_seq_id] = read.cigarstring
             print(f"Long Read - Seq ID: {base_seq_id}, CIGAR: {read.cigarstring}")
         else:
@@ -227,34 +228,34 @@ def compare_cigar_strings(long_read_cigar_dict, subread_cigar_list):
         "Seq ID",
         "Long Read CIGAR",
         "Subread CIGAR",
-        "Matches",
-        "Mismatches",
-        "Insertions",
-        "Deletions",
-        "Splices",
-        "Soft Clips",
-        "Hard Clips",
-        "Paddings",
-        "Unmatched Long Read",
+        "Match",
+        "Mismatch",
+        "Insertion",
+        "Deletion",
+        "Splice",
+        "Soft Clip",
+        "Hard Clip",
+        "Padding",
+        "Unmatched Long",
         "Unmatched Subread",
         "Accuracy",
         "Precision",
         "Recall"
     ]
 
-    table = tabulate(results, headers, tablefmt="grid")
-    with open("star_output_STARtmp/cigar_comparison_results.txt", "w") as file:
-        file.write(table)
+    # Save the results to a TSV file
+    with open('/Users/AlvinZhang2026/comparison_results.tsv', 'w', newline='') as file:
+        writer = csv.writer(file, delimiter='\t')
+        writer.writerow(headers)
+        writer.writerows(results)
 
-    print("\nCIGAR string comparison results:\n")
-    print(table)
+    # Display the results in a table format
+    print("\nComparison Results:")
+    print(tabulate(results, headers=headers, tablefmt="grid"))
 
-def main():
-    long_read_bam = "/Users/AlvinZhang2026/bio_data/several_reads2.bam"
-    subread_bam = "/Users/AlvinZhang2026/HISAT2sortedoutput1.bam"
+# Example usage
+long_read_bam_file = "/Users/AlvinZhang2026/bio_data/several_reads.bam"
+subread_bam_file = "/Users/AlvinZhang2026/STARoutput9.bam"
 
-    long_read_cigar_dict, subread_cigar_list = read_and_process_reads(long_read_bam, subread_bam)
-    compare_cigar_strings(long_read_cigar_dict, subread_cigar_list)
-
-if __name__ == "__main__":
-    main()
+long_read_cigar_dict, subread_cigar_list = read_and_process_reads(long_read_bam_file, subread_bam_file)
+compare_cigar_strings(long_read_cigar_dict, subread_cigar_list)
