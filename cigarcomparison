@@ -55,6 +55,26 @@ def get_cigar_name(op):
         'X': 'mismatch'
     }.get(op, 'unknown')
 
+def generate_accurate_representation(long_cigar, start, end):
+    """Generate the accurate representation CIGAR string for the region of interest."""
+    trimmed_cigar = []
+    position = 0
+    for length, op in long_cigar:
+        if position + length <= start:
+            position += length
+            continue
+        if position < end:
+            if position < start:
+                length -= (start - position)
+                position = start
+            if position + length > end:
+                length = end - position
+            trimmed_cigar.append((length, op))
+            position += length
+        if position >= end:
+            break
+    return "".join(f"{length}{op}" for length, op in trimmed_cigar)
+
 def calculate_accuracy_precision_recall(summary, total_subread_bases):
     accurate_bases = summary['match'] + summary['insertion'] + summary['deletion'] + summary['splice']
     total_detected_bases = sum(summary[op] for op in ['match', 'insertion', 'deletion', 'splice', 'unmatched_sub'])
@@ -72,23 +92,10 @@ def align_subread_to_longread(long_read_cigar, subread_cigar, start, end):
     long_cigar = parse_cigar(long_read_cigar)
     sub_cigar = parse_cigar(subread_cigar)
 
-    long_cigar_trimmed = []
-    position = 0
-    for length, op in long_cigar:
-        if position + length <= start:
-            position += length
-            continue
-        if position < end:
-            if position < start:
-                length -= (start - position)
-                position = start
-            if position + length > end:
-                length = end - position
-            long_cigar_trimmed.append((length, op))
-            position += length
-        if position >= end:
-            break
+    # Generate the accurate representation CIGAR string
+    accurate_representation = generate_accurate_representation(long_cigar, start, end)
 
+    long_cigar_trimmed = parse_cigar(accurate_representation)
     summary = {
         'match': 0,
         'mismatch': 0,
@@ -104,6 +111,9 @@ def align_subread_to_longread(long_read_cigar, subread_cigar, start, end):
 
     long_index = 0
     sub_index = 0
+
+    print(f"Trimmed Long Read CIGAR: {long_cigar_trimmed}")
+    print(f"Subread CIGAR: {sub_cigar}")
 
     while long_index < len(long_cigar_trimmed) and sub_index < len(sub_cigar):
         long_len, long_op = long_cigar_trimmed[long_index]
@@ -165,7 +175,10 @@ def align_subread_to_longread(long_read_cigar, subread_cigar, start, end):
     total_subread_bases = sum(summary[op] for op in ['match', 'insertion', 'deletion', 'splice', 'unmatched_sub'])
     accuracy, precision, recall = calculate_accuracy_precision_recall(summary, total_subread_bases)
 
-    return summary, accuracy, precision, recall
+    print(f"Summary: {summary}")
+    print(f"Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}")
+
+    return summary, accuracy, precision, recall, accurate_representation
 
 def compare_cigar_strings(long_read_cigar_dict, subread_cigar_list):
     results = []
@@ -182,52 +195,22 @@ def compare_cigar_strings(long_read_cigar_dict, subread_cigar_list):
         if seq_id in long_read_cigar_dict:
             matched_count += 1
             long_read_cigar = long_read_cigar_dict[seq_id]
-            print(f"Aligning subread {subread_cigar} to long read {long_read_cigar} (Sequence ID: {seq_id})...")
-            summary, accuracy, precision, recall = align_subread_to_longread(long_read_cigar, subread_cigar, start, end)
-
-            result_row = [
-                seq_id,
-                long_read_cigar,
-                subread_cigar,
-                summary['match'],
-                summary['mismatch'],
-                summary['insertion'],
-                summary['deletion'],
-                summary['splice'],
-                summary['soft_clip'],
-                summary['hard_clip'],
-                summary['padding'],
-                summary['unmatched_long'],
-                summary['unmatched_sub'],
-                f"{accuracy:.4f}",
-                f"{precision:.4f}",
-                f"{recall:.4f}"
-            ]
-
-            results.append(result_row)
+            print(f"Matching Subread to Long Read: {seq_id}")
+            summary, accuracy, precision, recall, accurate_representation = align_subread_to_longread(long_read_cigar, subread_cigar, start, end)
+            row = [seq_id, long_read_cigar, subread_cigar, accurate_representation] + [summary[op] for op in ['match', 'mismatch', 'insertion', 'deletion', 'splice', 'soft_clip', 'hard_clip', 'padding', 'unmatched_long', 'unmatched_sub']] + [accuracy, precision, recall]
+            results.append(row)
         else:
+            print(f"No matching long read for subread {seq_id}")
             unmatched_count += 1
-            print(f"Sequence ID {seq_id} not found in long read CIGAR dictionary")
-            result_row = [
-                seq_id,
-                "N/A",
-                subread_cigar,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                "N/A",
-                "N/A",
-                "0.0000",
-                "0.0000",
-                "0.0000"
-            ]
-            results.append(result_row)
 
-    print(f"\nMatched subreads: {matched_count}")
+    print(f"Matched subreads: {matched_count}")
     print(f"Unmatched subreads: {unmatched_count}")
 
     headers = [
         "Seq ID",
         "Long Read CIGAR",
         "Subread CIGAR",
+        "Accurate Representation",
         "Match",
         "Mismatch",
         "Insertion",
