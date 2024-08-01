@@ -1,5 +1,4 @@
 import pysam
-import csv
 import re
 from tabulate import tabulate
 
@@ -14,9 +13,10 @@ def read_and_process_reads(long_read_bam, subread_bam):
     print("Processing long reads...")
     for read in long_read_file.fetch():
         if read.cigarstring:
-            base_seq_id = read.query_name.split()[0].split('/')[0]  # Extract ID before '/'
-            long_read_cigar_dict[base_seq_id] = read.cigarstring
-            print(f"Long Read - Seq ID: {base_seq_id}, CIGAR: {read.cigarstring}")
+            full_seq_id = read.query_name
+            base_seq_id = full_seq_id.split('/')[0]  # Extract ID before '/'
+            long_read_cigar_dict[base_seq_id] = (read.cigarstring, read.query_sequence)
+            print(f"Long Read - Seq ID: {base_seq_id}, Full ID: {full_seq_id}, CIGAR: {read.cigarstring}")
         else:
             print(f"Warning: Read {read.query_name} has no CIGAR string")
 
@@ -24,16 +24,17 @@ def read_and_process_reads(long_read_bam, subread_bam):
 
     print("Processing subreads...")
     for read in subread_file.fetch():
-        base_seq_id = read.query_name.split()[0]
+        full_seq_id = read.query_name
+        base_seq_id = full_seq_id.split('=')[0]  # Extract ID before '='
         cigar = read.cigarstring
         start = read.reference_start
         end = read.reference_end
 
         if cigar:
-            subread_cigar_list.append((base_seq_id, cigar, start, end))
-            print(f"Subread - Seq ID: {base_seq_id}, CIGAR: {cigar}, Start: {start}, End: {end}")
+            subread_cigar_list.append((base_seq_id, cigar, start, end, full_seq_id))
+            print(f"Subread - Seq ID: {base_seq_id}, Full ID: {full_seq_id}, CIGAR: {cigar}, Start: {start}, End: {end}")
         else:
-            print(f"Warning: Subread {base_seq_id} has no CIGAR string")
+            print(f"Warning: Subread {full_seq_id} has no CIGAR string")
 
     print(f"Subread list: {len(subread_cigar_list)} entries")
 
@@ -189,56 +190,34 @@ def compare_cigar_strings(long_read_cigar_dict, subread_cigar_list):
     print(", ".join(list(long_read_cigar_dict.keys())[:10]) + "...")
 
     print("\nSubread sequence IDs:")
-    print(", ".join([seq_id for seq_id, _, _, _ in subread_cigar_list[:10]]) + "...")
+    print(", ".join([seq_id for seq_id, _, _, _, _ in subread_cigar_list[:10]]) + "...")
 
-    for seq_id, subread_cigar, start, end in subread_cigar_list:
-        if seq_id in long_read_cigar_dict:
+    for base_seq_id, subread_cigar, start, end, full_seq_id in subread_cigar_list:
+        if base_seq_id in long_read_cigar_dict:
             matched_count += 1
-            long_read_cigar = long_read_cigar_dict[seq_id]
-            print(f"Matching Subread to Long Read: {seq_id}")
+            long_read_cigar, long_read_sequence = long_read_cigar_dict[base_seq_id]
+            print(f"Matching Subread to Long Read: {base_seq_id}")
             summary, accuracy, precision, recall, accurate_representation = align_subread_to_longread(long_read_cigar, subread_cigar, start, end)
-            row = [seq_id, long_read_cigar, subread_cigar, accurate_representation] + [summary[op] for op in ['match', 'mismatch', 'insertion', 'deletion', 'splice', 'soft_clip', 'hard_clip', 'padding', 'unmatched_long', 'unmatched_sub']] + [accuracy, precision, recall]
+            row = [full_seq_id, long_read_cigar, subread_cigar, accurate_representation, accuracy, precision, recall]
             results.append(row)
         else:
-            print(f"No matching long read for subread {seq_id}")
             unmatched_count += 1
+            print(f"Unmatched Subread: {base_seq_id}")
 
-    print(f"Matched subreads: {matched_count}")
+    print(f"\nMatched subreads: {matched_count}")
     print(f"Unmatched subreads: {unmatched_count}")
 
-    headers = [
-        "Seq ID",
-        "Long Read CIGAR",
-        "Subread CIGAR",
-        "Accurate Representation",
-        "Match",
-        "Mismatch",
-        "Insertion",
-        "Deletion",
-        "Splice",
-        "Soft Clip",
-        "Hard Clip",
-        "Padding",
-        "Unmatched Long",
-        "Unmatched Subread",
-        "Accuracy",
-        "Precision",
-        "Recall"
-    ]
+    return results
 
-    # Save the results to a TSV file
-    with open('/Users/AlvinZhang2026/comparison_results.tsv', 'w', newline='') as file:
-        writer = csv.writer(file, delimiter='\t')
-        writer.writerow(headers)
-        writer.writerows(results)
+def print_table(results):
+    headers = ["Subread ID", "Long Read CIGAR", "Subread CIGAR", "Accurate CIGAR Representation", "Accuracy", "Precision", "Recall"]
+    table = tabulate(results, headers=headers, tablefmt="pipe", floatfmt=".3f")
+    print(table)
 
-    # Display the results in a table format
-    print("\nComparison Results:")
-    print(tabulate(results, headers=headers, tablefmt="grid"))
+# Sample usage
+long_read_bam = '/Users/AlvinZhang2026/bio_data/several_reads.bam'
+subread_bam = '/Users/AlvinZhang2026/STARsortedoutput11.bam'
 
-# Example usage
-long_read_bam_file = "/Users/AlvinZhang2026/bio_data/several_reads.bam"
-subread_bam_file = "/Users/AlvinZhang2026/STARoutput9.bam"
-
-long_read_cigar_dict, subread_cigar_list = read_and_process_reads(long_read_bam_file, subread_bam_file)
-compare_cigar_strings(long_read_cigar_dict, subread_cigar_list)
+long_read_cigar_dict, subread_cigar_list = read_and_process_reads(long_read_bam, subread_bam)
+results = compare_cigar_strings(long_read_cigar_dict, subread_cigar_list)
+print_table(results)
