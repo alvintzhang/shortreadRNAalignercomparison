@@ -16,7 +16,6 @@ def parseCigar(givenBamfile):
             continue
         seq.append((read.query_name, read.query_sequence))  # Store query name and sequence
         cigar.append(read.cigarstring)  # Store CIGAR string
-
         if read.cigartuples:
             for (op, le) in read.cigartuples:
                 if op == 4 and not SoH:  # Check for soft clip
@@ -58,17 +57,17 @@ def QRtable2(givenBamfile, SoH):
     return [query_positions2, reference_positions2, splices, splices2]  # Return positions and splice info
 
 # Extracts subreads from the query sequences, returning a list with detailed subread information.
-def extract_subreads(query_seq, start_positions, length, long_read_id, reference_positions):
+def extract_subreads(query_seq, start_positions, length, long_read_id, query_positions):
     subreads = []  # List to store subreads
     used_positions = set()  # Track positions that have been used
 
     for i, start_pos in enumerate(start_positions):
         if start_pos is not None and start_pos not in used_positions and (start_pos + length <= len(query_seq)):
             subread = query_seq[start_pos:start_pos + length]  # Extract subread
-            ref_start = reference_positions[i] if i < len(reference_positions) else None  # Reference start position
-            ref_end = reference_positions[i + length - 1] if i + length - 1 < len(reference_positions) else None  # Reference end position
-            subread_id = f"{long_read_id}_subread_{i + 1}_start_{ref_start}_end_{ref_end}"  # Generate subread ID
-            subreads.append((subread, ref_start, ref_end, long_read_id, subread_id))  # Store subread information
+            query_start = query_positions[start_pos] if start_pos < len(query_positions) else None  # Query start position
+            query_end = query_positions[start_pos + length - 1] if start_pos + length - 1 < len(query_positions) else None  # Query end position
+            subread_id = f"{long_read_id}_subread_{i + 1}_start_{query_start}_end_{query_end}"  # Generate subread ID
+            subreads.append((subread, query_start, query_end, long_read_id, subread_id))  # Store subread information
             used_positions.update(range(start_pos, start_pos + length))  # Mark positions as used
 
     return subreads  # Return list of subreads
@@ -76,12 +75,12 @@ def extract_subreads(query_seq, start_positions, length, long_read_id, reference
 # Converts subreads to a FASTA file format for further RNA sequencing analysis.
 def subreads_to_fasta(subreads, output_file):
     with open(output_file, 'w') as fasta_file:
-        for subread, ref_start, ref_end, long_read_id, subread_id in subreads:
+        for subread, query_start, query_end, long_read_id, subread_id in subreads:
             fasta_file.write(f">{subread_id}\n")  # Write header with subread ID
             fasta_file.write(f"{subread}\n")  # Write subread sequence
 
 # Generates random subreads for a given query sequence
-def generate_random_subreads(query_seq, reference_positions, subread_length):
+def generate_random_subreads(query_seq, query_positions, subread_length):
     num_subreads = len(query_seq) // subread_length  # Determine number of subreads based on sequence length
     random_subreads = []  # List to store random subreads
     for _ in range(num_subreads):
@@ -89,9 +88,9 @@ def generate_random_subreads(query_seq, reference_positions, subread_length):
             break
         start = random.randint(0, len(query_seq) - subread_length)  # Randomly select start position
         subread = query_seq[start:start + subread_length]  # Extract subread
-        ref_start = reference_positions[start] if start < len(reference_positions) else None  # Reference start position
-        ref_end = reference_positions[start + subread_length - 1] if start + subread_length - 1 < len(reference_positions) else None  # Reference end position
-        random_subreads.append((subread, start, start + subread_length - 1, ref_start, ref_end))  # Store subread information
+        query_start = query_positions[start] if start < len(query_positions) else None  # Query start position
+        query_end = query_positions[start + subread_length - 1] if start + subread_length - 1 < len(query_positions) else None  # Query end position
+        random_subreads.append((subread, start, start + subread_length - 1, query_start, query_end))  # Store subread information
     return random_subreads  # Return list of random subreads
 
 # Tests all the functions, printing their results.
@@ -101,7 +100,7 @@ def testFunctions(givenBamfile):
     SoHArray = parseCigarArray[2]  # Extract soft/hard clip information
     SoH = SoHArray[0] if SoHArray else 0  # Determine soft/hard clip type
     QRtable2Array = QRtable2(givenBamfile, SoH)  # Generate query and reference position tables
-    reference_positions = QRtable2Array[1]  # Extract reference positions
+    query_positions = QRtable2Array[0]  # Extract query positions
 
     # Collect all subreads and random subreads for all long reads
     all_subreads = []  # List to store all subreads
@@ -114,11 +113,11 @@ def testFunctions(givenBamfile):
         length_of_subread = 150  # Define length of subreads
 
         # Generate random subreads for the current long read
-        random_subreads = generate_random_subreads(read_seq, reference_positions, length_of_subread)
+        random_subreads = generate_random_subreads(read_seq, query_positions, length_of_subread)
 
-        for i, (subread, start, end, ref_start, ref_end) in enumerate(random_subreads):
-            subread_id = f"{read_id}_random_subread_{i + 1}_start_{ref_start}_end_{ref_end}"  # Generate subread ID
-            random_subreads_list.append((subread, start, end, ref_start, ref_end, subread_id))  # Store subread information
+        for i, (subread, start, end, query_start, query_end) in enumerate(random_subreads):
+            subread_id = f"{read_id}_random_subread_{i + 1}_start_{query_start}_end_{query_end}"  # Generate subread ID
+            random_subreads_list.append((subread, start, end, query_start, query_end, subread_id))  # Store subread information
             print(f"Random Subread ID: {subread_id}, Subread: {subread}, Start: {start}, End: {end}")
 
         all_subreads.extend(random_subreads)  # Collect random subreads from all reads
@@ -130,7 +129,7 @@ def testFunctions(givenBamfile):
 
     # Output random subreads to FASTA
     output_file3 = "/Users/AlvinZhang2026/bio_data/random_subreads.fasta"
-    subreads_to_fasta([(subread, ref_start, ref_end, read_id, subread_id) for subread, start, end, ref_start, ref_end, subread_id in random_subreads_list], output_file3)
+    subreads_to_fasta([(subread, query_start, query_end, read_id, subread_id) for subread, start, end, query_start, query_end, subread_id in random_subreads_list], output_file3)
 
 # Run the test function
 testFunctions(bamfile)
