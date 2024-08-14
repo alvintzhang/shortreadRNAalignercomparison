@@ -66,7 +66,7 @@ def extract_subreads(query_seq, start_positions, length, long_read_id, query_pos
             subread = query_seq[start_pos:start_pos + length]  # Extract subread
             query_start = query_positions[start_pos] if start_pos < len(query_positions) else None  # Query start position
             query_end = query_positions[start_pos + length - 1] if start_pos + length - 1 < len(query_positions) else None  # Query end position
-            subread_id = f"{long_read_id}_subread_{i + 1}_start_{query_start}_end_{query_end}"  # Generate subread ID
+            subread_id = f"{long_read_id}_random_subread_{i + 1}_start_{query_start}_end_{query_end}"  # Generate subread ID
             subreads.append((subread, query_start, query_end, long_read_id, subread_id))  # Store subread information
             used_positions.update(range(start_pos, start_pos + length))  # Mark positions as used
 
