@@ -13,7 +13,7 @@ def read_and_process_reads(long_read_bam, subread_bam):
     print("Processing long reads...")
     for read in long_read_file.fetch():
         if read.cigarstring:
-            base_seq_id = read.query_name
+            base_seq_id = read.query_name.replace('/', '=')
             long_read_cigar_dict[base_seq_id] = (read.cigarstring, read.query_sequence)
         else:
             print(f"Warning: Read {read.query_name} has no CIGAR string")
@@ -23,7 +23,8 @@ def read_and_process_reads(long_read_bam, subread_bam):
     print("Processing subreads...")
     for read in subread_file.fetch():
         full_seq_id = read.query_name
-        base_seq_id = full_seq_id.split('random_subread')[0].rstrip('_').replace('=', '/')
+        base_seq_id = full_seq_id.split('random_subread')[0].rstrip('_')
+        base_seq_id = base_seq_id.replace('=', '/')
         cigar = read.cigarstring
 
         start_stop_match = re.search(r'_start_(\d+)_end_(\d+)$', full_seq_id)
@@ -82,7 +83,6 @@ def generate_expected_cigar_string(long_cigar, start, stop):
 
         current_position += length
 
-    # Ensure the expected CIGAR string contains exactly 150 matches
     if total_matches < 150:
         remaining_matches = 150 - total_matches
         for i, (length, op) in enumerate(expected_cigar):
@@ -147,11 +147,9 @@ def align_subread_to_longread(long_read_cigar, long_read_sequence, subread_cigar
             if get_cigar_name(expected_op) in shared_summary:
                 shared_summary[get_cigar_name(expected_op)] += common_len
 
-            # Update remaining lengths
             expected_len -= common_len
             sub_len -= common_len
 
-            # Move to the next operation if exhausted
             if expected_len == 0:
                 expected_index += 1
             else:
@@ -196,9 +194,9 @@ def compare_cigar_strings(long_read_cigar_dict, subread_cigar_list, output_file)
 
     for base_seq_id, subread_cigar, start, stop, full_seq_id in subread_cigar_list:
         converted_id = base_seq_id.split('/')[0] + "/" + "/".join(base_seq_id.split('/')[1:])
-        if converted_id in long_read_cigar_dict:
+        if converted_id.replace('/', '=') in long_read_cigar_dict:
             matched_count += 1
-            long_read_cigar, long_read_sequence = long_read_cigar_dict[converted_id]
+            long_read_cigar, long_read_sequence = long_read_cigar_dict[converted_id.replace('/', '=')]
             summary, accuracy, precision, expected_cigar_string = align_subread_to_longread(
                 long_read_cigar, long_read_sequence, subread_cigar, start, stop
             )
@@ -221,32 +219,33 @@ def compare_cigar_strings(long_read_cigar_dict, subread_cigar_list, output_file)
             ])
         else:
             unmatched_count += 1
-            print(f"Unmatched subread: {full_seq_id}")
 
-    total_accuracy /= matched_count if matched_count > 0 else 1
-    total_precision /= matched_count if matched_count > 0 else 1
+    if total_subreads > 0:
+        average_accuracy = total_accuracy / total_subreads
+        average_precision = total_precision / total_subreads
+    else:
+        average_accuracy = 0
+        average_precision = 0
 
-    print(
-        f"\nSummary:\nMatched: {matched_count}, Unmatched: {unmatched_count}, Fully Matched: {fully_matched_count}\n"
-        f"Overall Accuracy: {total_accuracy:.4f}, Overall Precision: {total_precision:.4f}\n"
-    )
+    with open(output_file, 'w') as f:
+        header = [
+            "Subread ID", "Subread CIGAR", "Expected CIGAR", "Start", "Stop", "Long Read CIGAR",
+            "Shared Matches", "Shared Insertions", "Shared Deletions", "Shared Splices",
+            "Unmatched Subread", "Accuracy", "Precision"
+        ]
+        f.write(tabulate(results, headers=header, tablefmt="tsv"))
 
-    headers = [
-        "Subread ID", "Subread CIGAR", "Expected CIGAR", "Start", "Stop", "Long Read CIGAR",
-        "Shared Matches", "Shared Insertions", "Shared Deletions", "Shared Splices",
-        "Total Matches", "Total Insertions", "Total Deletions", "Total Splices",
-        "Accuracy", "Precision"
-    ]
+    print(f"Matching summary: {matched_count}/{total_subreads} matched, {unmatched_count} unmatched")
+    print(f"Fully matched: {fully_matched_count}/{total_subreads}")
+    print(f"Average accuracy: {average_accuracy:.2f}")
+    print(f"Average precision: {average_precision:.2f}")
+    print(f"Results saved to {output_file}")
 
-    with open(output_file, 'w') as outfile:
-        outfile.write(tabulate(results, headers, tablefmt="tsv"))
+# Example usage
+long_read_bam = "/Users/AlvinZhang2026/hg002_revio_grch38_minimap2_juncbed.chr20.part.bam"
+subread_bam = "/Users/AlvinZhang2026/STARsortedoutput16.bam"
+output_file = ("/Users/AlvinZhang2026/cigar_comparison_results.tsv")
 
-    print(f"Results written to {output_file}")
 
-if __name__ == "__main__":
-    long_read_bam_path = "/Users/AlvinZhang2026/hg002_revio_grch38_minimap2_juncbed.chr20.part.bam"
-    subread_bam_path = "/Users/AlvinZhang2026/STARsortedoutput17.bam"
-    output_file_path = "/Users/AlvinZhang2026/comparison_results.tsv"
-
-    long_read_cigar_dict, subread_cigar_list = read_and_process_reads(long_read_bam_path, subread_bam_path)
-    compare_cigar_strings(long_read_cigar_dict, subread_cigar_list, output_file_path)
+long_read_cigar_dict, subread_cigar_list = read_and_process_reads(long_read_bam, subread_bam)
+compare_cigar_strings(long_read_cigar_dict, subread_cigar_list, output_file)
