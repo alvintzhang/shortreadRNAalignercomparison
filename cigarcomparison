@@ -214,8 +214,7 @@ def compare_cigar_strings(long_read_cigar_dict, subread_cigar_list, output_file)
             results.append([
                 full_seq_id, subread_cigar, expected_cigar_string, start, stop, long_read_cigar,
                 summary['match'], summary['insertion'], summary['deletion'], summary['splice'],
-                summary['match'], summary['insertion'], summary['deletion'], summary['splice'],
-                accuracy, precision
+                summary['soft_clip'], summary['unmatched_sub'], accuracy, precision
             ])
         else:
             unmatched_count += 1
@@ -231,21 +230,24 @@ def compare_cigar_strings(long_read_cigar_dict, subread_cigar_list, output_file)
         header = [
             "Subread ID", "Subread CIGAR", "Expected CIGAR", "Start", "Stop", "Long Read CIGAR",
             "Shared Matches", "Shared Insertions", "Shared Deletions", "Shared Splices",
-            "Unmatched Subread", "Accuracy", "Precision"
+            "Soft Clips", "Unmatched Subread", "Accuracy", "Precision"
         ]
-        f.write(tabulate(results, headers=header, tablefmt="tsv"))
+        f.write('\t'.join(header) + '\n')
+        for result in results:
+            f.write('\t'.join(map(str, result)) + '\n')
 
-    print(f"Matching summary: {matched_count}/{total_subreads} matched, {unmatched_count} unmatched")
-    print(f"Fully matched: {fully_matched_count}/{total_subreads}")
-    print(f"Average accuracy: {average_accuracy:.2f}")
-    print(f"Average precision: {average_precision:.2f}")
+    print(f"Matched {matched_count}/{total_subreads} subreads to long reads.")
+    print(f"Fully matched: {fully_matched_count}/{total_subreads} subreads.")
+    print(f"Average Accuracy: {average_accuracy:.4f}")
+    print(f"Average Precision: {average_precision:.4f}")
     print(f"Results saved to {output_file}")
 
-# Example usage
-long_read_bam = "/Users/AlvinZhang2026/hg002_revio_grch38_minimap2_juncbed.chr20.part.bam"
-subread_bam = "/Users/AlvinZhang2026/STARsortedoutput16.bam"
-output_file = ("/Users/AlvinZhang2026/cigar_comparison_results.tsv")
+# Example usage:
+long_read_bam_path = '/Users/AlvinZhang2026/hg002_revio_grch38_minimap2_juncbed.chr20.part.bam'
+subread_bam_path = '/Users/AlvinZhang2026/STARsortedoutput16.bam'
+output_file_path = '/Users/AlvinZhang2026/comparison_results.tsv'
+
+long_read_cigar_dict, subread_cigar_list = read_and_process_reads(long_read_bam_path, subread_bam_path)
+compare_cigar_strings(long_read_cigar_dict, subread_cigar_list, output_file_path)
 
 
-long_read_cigar_dict, subread_cigar_list = read_and_process_reads(long_read_bam, subread_bam)
-compare_cigar_strings(long_read_cigar_dict, subread_cigar_list, output_file)
