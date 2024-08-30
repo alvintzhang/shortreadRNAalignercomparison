@@ -2,16 +2,18 @@ import pysam
 import re
 from tabulate import tabulate
 
+'''This code processes short-read RNA-seq alignment data and compares the CIGAR string of the aligned subreads against the "original" CIGAR strings included in the sequence IDs. It then produces a short summary that gets printed out while also recording the raw data into a TSV file for viewing on excel or google sheets'''
 
 def read_and_process_reads(long_read_bam, subread_bam):
-    long_read_cigar_dict = {}
-    subread_cigar_list = []
+    long_read_cigar_dict = {}  # Dictionary to store long read CIGAR strings and sequences
+    subread_cigar_list = []  # List to store subread CIGAR strings and relevant info
 
     print("Opening BAM files...")
-    long_read_file = pysam.AlignmentFile(long_read_bam, "rb")
-    subread_file = pysam.AlignmentFile(subread_bam, "rb")
+    long_read_file = pysam.AlignmentFile(long_read_bam, "rb")  # Open long read BAM file
+    subread_file = pysam.AlignmentFile(subread_bam, "rb")  # Open subread BAM file
 
     print("Processing long reads...")
+    # Process long reads and extract CIGAR strings and sequences
     for read in long_read_file.fetch():
         if read.cigarstring:
             base_seq_id = read.query_name.replace('/', '=')
@@ -22,12 +24,14 @@ def read_and_process_reads(long_read_bam, subread_bam):
     print(f"Long reads dictionary: {len(long_read_cigar_dict)} entries")
 
     print("Processing subreads...")
+    # Process subreads and extract CIGAR strings, start and stop positions
     for read in subread_file.fetch():
         full_seq_id = read.query_name
         base_seq_id = full_seq_id.split('random_subread')[0].rstrip('_')
         base_seq_id = base_seq_id.replace('=', '/')
         cigar = read.cigarstring
 
+        # Extract start and stop positions from the sequence ID
         start_stop_match = re.search(r'_start_(\d+)_end_(\d+)$', full_seq_id)
         if start_stop_match:
             start, stop = map(int, start_stop_match.groups())
@@ -43,12 +47,12 @@ def read_and_process_reads(long_read_bam, subread_bam):
 
     return long_read_cigar_dict, subread_cigar_list
 
-
 def parse_cigar(cigar_string):
+    """Parse CIGAR string into a list of (length, operation) tuples"""
     return [(int(length), op) for length, op in re.findall(r'(\d+)([MIDNSHP=X])', cigar_string)]
 
-
 def get_cigar_name(op):
+    """Map CIGAR operation to descriptive name"""
     return {
         'M': 'match',
         'I': 'insertion',
@@ -61,8 +65,8 @@ def get_cigar_name(op):
         'X': 'mismatch'
     }.get(op, 'unknown')
 
-
 def generate_expected_cigar_string(long_cigar, start, stop):
+    """Generate expected CIGAR string for the given start and stop positions"""
     expected_cigar = []
     current_position = 0
     total_matches = 0
@@ -85,6 +89,7 @@ def generate_expected_cigar_string(long_cigar, start, stop):
 
         current_position += length
 
+    # Ensure the CIGAR string is exactly 150 base pairs long
     if total_matches < 150:
         remaining_matches = 150 - total_matches
         for i, (length, op) in enumerate(expected_cigar):
@@ -102,19 +107,18 @@ def generate_expected_cigar_string(long_cigar, start, stop):
     expected_cigar_string = ''.join([f"{length}{op}" for length, op in expected_cigar])
     return expected_cigar_string
 
-
 def calculate_accuracy_precision(summary, shared_summary):
+    """Calculate accuracy and precision based on summary and shared counts"""
     accurate_bases = sum(shared_summary[op] for op in ['match', 'insertion', 'deletion', 'splice', 'mismatch'])
     total_detected_bases = sum(summary[op] for op in ['match', 'insertion', 'deletion', 'splice', 'mismatch'])
 
     accuracy = accurate_bases / total_detected_bases if total_detected_bases > 0 else 0
-    precision = accurate_bases / (accurate_bases + summary['unmatched_sub']) if (accurate_bases + summary[
-        'unmatched_sub']) > 0 else 0
+    precision = accurate_bases / (accurate_bases + summary['unmatched_sub']) if (accurate_bases + summary['unmatched_sub']) > 0 else 0
 
     return accuracy, precision
 
-
 def calculate_splice_junction_metrics(long_cigar, sub_cigar):
+    """Calculate splice junction accuracy"""
     long_splices = [(length, op) for length, op in long_cigar if op == 'N']
     sub_splices = [(length, op) for length, op in sub_cigar if op == 'N']
 
@@ -128,8 +132,8 @@ def calculate_splice_junction_metrics(long_cigar, sub_cigar):
 
     return splice_accuracy
 
-
 def calculate_approximate_coordinate_accuracy(long_cigar, sub_cigar):
+    """Calculate approximate coordinate accuracy based on CIGAR strings"""
     long_coords = []
     sub_coords = []
     current_position = 0
@@ -166,8 +170,8 @@ def calculate_approximate_coordinate_accuracy(long_cigar, sub_cigar):
 
     return coord_accuracy
 
-
 def align_subread_to_longread(long_read_cigar, long_read_sequence, subread_cigar, start, stop):
+    """Align subread to long read and calculate accuracy, precision, and other metrics"""
     long_cigar = parse_cigar(long_read_cigar)
     sub_cigar = parse_cigar(subread_cigar)
 
@@ -220,114 +224,43 @@ def align_subread_to_longread(long_read_cigar, long_read_sequence, subread_cigar
             else:
                 sub_cigar_parsed[sub_index] = (sub_len, sub_op)
         else:
+            expected_index += 1
             sub_index += 1
 
-    for op in shared_summary:
-        summary[op] += shared_summary[op]
-
-    total_expected_bases = sum(length for length, op in expected_cigar_parsed if op in ['M', 'I', 'D', 'N', 'X'])
-    total_subread_bases = sum(length for length, op in sub_cigar_parsed if op in ['M', 'I', 'D', 'N', 'X'])
-    summary['unmatched_sub'] = total_subread_bases - sum(shared_summary[op] for op in shared_summary)
-
+    # Calculate accuracy, precision, and other metrics
     accuracy, precision = calculate_accuracy_precision(summary, shared_summary)
-    splice_accuracy = calculate_splice_junction_metrics(long_cigar, sub_cigar)
-    coord_accuracy = calculate_approximate_coordinate_accuracy(long_cigar, sub_cigar)
+    splice_accuracy = calculate_splice_junction_metrics(long_cigar, sub_cigar_parsed)
+    coord_accuracy = calculate_approximate_coordinate_accuracy(long_cigar, sub_cigar_parsed)
 
-    return summary, accuracy, precision, splice_accuracy, coord_accuracy, shared_summary, expected_cigar_string
+    return accuracy, precision, splice_accuracy, coord_accuracy, expected_cigar_string
 
+def main():
+    long_read_bam = '/Users/AlvinZhang2026/hg002_revio_grch38_minimap2_juncbed.chr20.part.bam'
+    subread_bam = '/Users/AlvinZhang2026/STARsortedoutput16.bam'
 
-def compare_cigar_strings(long_read_cigar_dict, subread_cigar_list, output_file):
+    long_read_cigar_dict, subread_cigar_list = read_and_process_reads(long_read_bam, subread_bam)
+
     results = []
-    matched_count = 0
-    unmatched_count = 0
-    fully_matched_count = 0
-    total_subreads = len(subread_cigar_list)
+    for subread_info in subread_cigar_list:
+        base_seq_id, sub_cigar, start, stop, full_seq_id = subread_info
+        long_read_cigar = long_read_cigar_dict.get(base_seq_id, (None, None))
 
-    total_summary = {
-        'match': 0,
-        'insertion': 0,
-        'deletion': 0,
-        'splice': 0,
-        'mismatch': 0,
-        'soft_clip': 0,
-        'unmatched_sub': 0
-    }
+        if long_read_cigar[0]:
+            accuracy, precision, splice_accuracy, coord_accuracy, expected_cigar_string = align_subread_to_longread(
+                long_read_cigar[0], long_read_cigar[1], sub_cigar, start, stop)
 
-    total_accuracy = 0
-    total_precision = 0
-    total_splice_accuracy = 0
-    total_splice_evaluated = 0  # To keep track of subreads with splicing events
-    total_coord_accuracy = 0
+            results.append([
+                full_seq_id,
+                accuracy,
+                precision,
+                splice_accuracy,
+                coord_accuracy,
+                expected_cigar_string,
+                sub_cigar
+            ])
 
-    for base_seq_id, subread_cigar, start, stop, full_seq_id in subread_cigar_list:
-        converted_id = base_seq_id.replace('/', '=')
-        if converted_id in long_read_cigar_dict:
-            matched_count += 1
-            long_read_cigar, long_read_sequence = long_read_cigar_dict[converted_id]
-            summary, accuracy, precision, splice_accuracy, coord_accuracy, shared_summary, expected_cigar_string = align_subread_to_longread(
-                long_read_cigar, long_read_sequence, subread_cigar, start, stop
-            )
-
-            fully_matched = (accuracy == 1.0 and precision == 1.0)
-            if fully_matched:
-                fully_matched_count += 1
-
-            total_accuracy += accuracy
-            total_precision += precision
-            total_coord_accuracy += coord_accuracy
-
-            # Evaluate splice accuracy only for subreads with splicing
-            if 'N' in subread_cigar:
-                total_splice_accuracy += splice_accuracy
-                total_splice_evaluated += 1
-
-            for key in total_summary:
-                total_summary[key] += summary.get(key, 0)
-
-            # Extract shared counts for output
-            shared_match = shared_summary['match']
-            shared_insertion = shared_summary['insertion']
-            shared_deletion = shared_summary['deletion']
-            shared_splice = shared_summary['splice']
-            shared_mismatch = shared_summary['mismatch']
-
-            results.append([full_seq_id, long_read_cigar, subread_cigar, accuracy, precision, splice_accuracy,
-                            coord_accuracy, shared_match, shared_insertion, shared_deletion, shared_splice,
-                            shared_mismatch, expected_cigar_string])
-
-        else:
-            unmatched_count += 1
-            print(f"Warning: No matching long read for subread {full_seq_id}")
-
-    # Calculate overall metrics
-    avg_accuracy = total_accuracy / matched_count if matched_count > 0 else 0
-    avg_splice_accuracy = total_splice_accuracy / total_splice_evaluated if total_splice_evaluated > 0 else 0
-    avg_coord_accuracy = total_coord_accuracy / matched_count if matched_count > 0 else 0
-
-    print(f"Total subreads processed: {total_subreads}")
-    print(f"Matched subreads: {matched_count}")
-    print(f"Unmatched subreads: {unmatched_count}")
-    print(f"Fully matched subreads (accuracy = 1.0): {fully_matched_count}")
-    print(f"Average accuracy: {avg_accuracy:.4f}")
-    print(f"Average splice junction accuracy (for spliced subreads): {avg_splice_accuracy:.4f}")
-    print(f"Average coordinate accuracy: {avg_coord_accuracy:.4f}")
-
-    # Save results to a TSV file
-    headers = ["Subread ID", "Long Read CIGAR", "Subread CIGAR", "Accuracy", "Splice Accuracy",
-               "Coordinate Accuracy", "Shared Matches", "Shared Insertions", "Shared Deletions", "Shared Splices",
-               "Shared Mismatches", "Expected CIGAR"]
-    with open(output_file, 'w') as f_out:
-        f_out.write('\t'.join(headers) + '\n')
-        for result in results:
-            f_out.write('\t'.join(map(str, result)) + '\n')
-
-    print(f"Results saved to {output_file}")
-
+    # Print results in a table format
+    print(tabulate(results, headers=['Subread ID', 'Accuracy', 'Precision', 'Splice Accuracy', 'Coordinate Accuracy', 'Expected CIGAR', 'Subread CIGAR'], tablefmt='grid'))
 
 if __name__ == "__main__":
-    long_read_bam_path = ReplaceWithLongReads.bam
-    subread_bam_path = ReplaceWithSortedAlignedSubreads.bam
-    output_file_path = ReplaceWithOutputFile.tsv
-
-    long_read_cigar_dict, subread_cigar_list = read_and_process_reads(long_read_bam_path, subread_bam_path)
-    compare_cigar_strings(long_read_cigar_dict, subread_cigar_list, output_file_path)
+    main()
