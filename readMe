@@ -23,9 +23,9 @@ This repository currently contains two Python scripts that perform specific task
       - Prints out a summarized version of the information.
     - Current Status: Fully implemented and functional. This script can be used to evaluate the accuracy of short-read RNA sequencing tools by comparing their outputs against the expected results.
 
-3. Additional Files in the Repo:
-    - These are the files that I used in the presentation that I gave to our lab (8/29/24)
-    - You do not need to download these files, but they are just examples for what kind of result you should expect running the scripts. 
+3. Project Presentation: 
+    - This PDF file includes the presentation I gave (8/29/24) to Heng Li's lab
+    - Details my work over the summer (2024) as a summer intern. 
 
 Project Goals and Next Steps
 
