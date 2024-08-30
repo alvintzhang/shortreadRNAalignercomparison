@@ -2,7 +2,8 @@ import pysam
 import os
 import random
 
-# Open the BAM file
+''' This code processes long-read RNA-seq data (Minimap2 output) in a BAM file, identifying splice sites and creating a table with query positions and reference positions to randomly sample subreads (150 base pair as default). '''
+
 bamfile = pysam.AlignmentFile("/Users/AlvinZhang2026/hg002_revio_grch38_minimap2_juncbed.chr20.part.bam", "rb")
 
 # Parses the CIGAR strings from the BAM file, returning sequences, CIGAR strings, and clip types (soft or hard).
@@ -147,9 +148,9 @@ def testFunctions(givenBamfile):
         print(long_read_id)
 
     # Output random subreads to FASTA
-    output_file3 = "/Users/AlvinZhang2026/bio_data/random_subreads.fasta"
+    output_file = ReplaceWithOutputFASTAfile.fasta
     subreads_to_fasta([(subread, query_start, query_end, read_id, subread_id) for
-                       subread, start, end, query_start, query_end, subread_id in random_subreads_list], output_file3)
+                       subread, start, end, query_start, query_end, subread_id in random_subreads_list], output_file)
 
     print(query_positions[:50])
 
