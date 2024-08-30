@@ -65,4 +65,9 @@ Alvin Zhang - alvinttzhang7@gmail.com / atzhang@mxschool.edu / 508-810-8860
 
 ## Acknowledgments
 
+Professor Heng Li (http://liheng.org/) for advising me on this project throughout the summer and giving me this incredible opportunity to work in his lab.
+Huang Neng (https://github.com/huangnengCSU) as my mentor for this project.
+Ying Zhou for his assistance with sequence ID troubles.
+Rest of the Li Lab (https://hlilab.github.io/) 
+
 Special thanks to the developers of the `pysam` and `tabulate` libraries, which are essential tools for handling BAM files and generating readable output tables, respectively.
