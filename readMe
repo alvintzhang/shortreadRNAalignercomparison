@@ -59,6 +59,18 @@ tabulate library (for generating readable output tables)
 STAR (https://github.com/alexdobin/STAR) or HISAT2 (https://daehwankimlab.github.io/hisat2/) RNA sequencing tools (if you plan to use these in your analysis)
 Minimap2 (https://github.com/lh3/minimap2/tree/master)
 
+Extract Subreads From Long-Read Minimap2 Alignment Output
+    - Prepare your BAM file data (Minimap2 aligned reads) 
+    - Run the querytable script: "python querytable.py -i /path/to/your/longread.bam -o /path/to/output.fasta 
+      Replace "/path/to/your/longread.bam" with the path to your BAM file and "/path/to/output.fasta" with your desired FASTA output file
+
+Subread Sequence ID Modification (Due to STAR and HISAT2 truncating the subreads' sequence IDs) 
+    - Review the FASTA file output 
+    - Ensure that bash is installed
+    - Run "sed 's/\//=/g' /path/to/output.fasta > /path/to/modified/output.fasta" 
+      Replace "/path/to/output.fasta" with your FASTA output file with the sampled subreads and "/path/to/modified/output.fasta" with the modified FASTA file
+
+
 
 
 Contributing
