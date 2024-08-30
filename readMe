@@ -23,6 +23,10 @@ This repository currently contains two Python scripts that perform specific task
       - Prints out a summarized version of the information.
     - Current Status: Fully implemented and functional. This script can be used to evaluate the accuracy of short-read RNA sequencing tools by comparing their outputs against the expected results.
 
+3. Additional Files in the Repo:
+    - These are the files that I used in the presentation that I gave to our lab (8/29/24)
+    - You do not need to download these files, but they are just examples for what kind of result you should expect running the scripts. 
+
 Project Goals and Next Steps
 
 The overall aim is to extend this foundational work to compare different RNA sequencing tools using the subreads extracted by the `querytable.py` script and to evaluate their performance using the `cigar_comparison.py` script. The following tasks are recommended for anyone who wishes to continue the project:
