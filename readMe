@@ -70,8 +70,20 @@ Subread Sequence ID Modification (Due to STAR and HISAT2 truncating the subreads
     - Run "sed 's/\//=/g' /path/to/output.fasta > /path/to/modified/output.fasta" 
       Replace "/path/to/output.fasta" with your FASTA output file with the sampled subreads and "/path/to/modified/output.fasta" with the modified FASTA file
 
+Align Subreads Using Short-Read RNA-seq Tools
+    - Have HISAT2, STAR, and Minimap2 installed 
+    - Take the modified FASTA file and align using one of the tools
+    - Sort and index the BAM output file: 
+       "samtools sort /path/to/aligned/output.bam -o /path/to/sorted/aligned/output.bam"
+       "samtools index /path/to/sorted/aligned/output.bam" 
+      Replace "/path/to/aligned/output.bam" with the actual output BAM file and "/path/to/sorted/aligned/output.bam" with whatever sorted output file you want.
 
-
+Compare CIGAR strings to Evaluate Alignment Accuracy
+    - Run the cigarcomparison.py script, changing your three inputs: 
+      "long_read_bam_path" = "/path/to/your/longread.bam" 
+      "subread_bam_path" = "/path/to/sorted/aligned/output.bam" 
+      "output_file_path" = "/path/to/TSV/output.tsv" 
+    - The script will print out a summarized version, although you can view the raw data on Excel through the TSV file output.
 
 Contributing
 
